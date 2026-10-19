@@ -10,6 +10,10 @@ services:
     environment:
       ENVIRONMENT: production
       ENABLE_API_DOCS: "false"
+      # Safe only because the edge is the sole entry point: Caddy replaces any client-supplied
+      # X-Forwarded-For with the real address, the frontend passes it on, and nothing outside
+      # the private network can reach the backend.
+      FORWARDED_ALLOW_IPS: "*"
 
   frontend:
     ports: !reset []

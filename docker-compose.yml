@@ -36,9 +36,10 @@ services:
       STORAGE_DIR: /data/storage
       ENVIRONMENT: ${ENVIRONMENT:-development}
       ALLOWED_ORIGINS: ${PUBLIC_ORIGIN:-http://localhost:3000}
-      # Only the frontend (and an edge proxy) can reach the backend on this private network,
-      # so their X-Forwarded-For headers are trusted.
-      FORWARDED_ALLOW_IPS: "*"
+      # X-Forwarded-For is NOT trusted here (the image default trusts only 127.0.0.1): the
+      # frontend is published directly and passes a browser's own header through, so trusting
+      # it would let clients pick their rate-limit key. The production overlay trusts it,
+      # because there the Caddy edge replaces it with the real client address.
     volumes:
       - storage:/data/storage
     expose:

@@ -18,8 +18,11 @@ flowchart LR
 ```
 
 Only the edge publishes ports (80/443). The frontend, backend and database are reachable only on
-the private Compose network. The backend trusts `X-Forwarded-For` because nothing but the
-frontend can reach it, and Caddy replaces any client-supplied value with the real address.
+the private Compose network. In this overlay the backend trusts `X-Forwarded-For` because
+nothing but the frontend can reach it, and Caddy replaces any client-supplied value with the real
+address. The base `docker-compose.yml` does not trust it: there the frontend is published
+directly and would pass a browser's own header through, letting a client choose its rate-limit
+key. Without the edge, per-IP limits are therefore shared by every browser.
 
 | Container | Image | Runs as | Health check |
 |---|---|---|---|
