@@ -6,11 +6,12 @@ import logging
 import uuid
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from app.config import Settings, get_settings
+from app.db.session import database_is_reachable
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/health", tags=["health"])
@@ -54,9 +55,12 @@ def _check_storage(settings: Settings) -> bool:
     summary="Readiness probe",
     responses={503: {"model": ReadinessResponse}},
 )
-def ready(settings: Annotated[Settings, Depends(get_settings)]) -> JSONResponse:
+def ready(request: Request, settings: Annotated[Settings, Depends(get_settings)]) -> JSONResponse:
     """Checks the dependencies required to serve traffic. Returns 503 if any check fails."""
-    checks = [ReadinessCheck(name="storage", ok=_check_storage(settings))]
+    checks = [
+        ReadinessCheck(name="database", ok=database_is_reachable(request.app.state.engine)),
+        ReadinessCheck(name="storage", ok=_check_storage(settings)),
+    ]
     all_ok = all(check.ok for check in checks)
     body = ReadinessResponse(status="ready" if all_ok else "not_ready", checks=checks)
     return JSONResponse(status_code=200 if all_ok else 503, content=body.model_dump())

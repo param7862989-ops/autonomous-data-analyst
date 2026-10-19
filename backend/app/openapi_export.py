@@ -18,7 +18,9 @@ def export(path: Path) -> None:
     settings = Settings(_env_file=None, enable_api_docs=True)
     schema = create_app(settings).openapi()
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(schema, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    # Explicit LF so the committed file is byte-identical on every platform.
+    text = json.dumps(schema, indent=2, sort_keys=True) + "\n"
+    path.write_text(text, encoding="utf-8", newline="\n")
 
 
 if __name__ == "__main__":

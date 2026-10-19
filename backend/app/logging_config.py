@@ -24,5 +24,5 @@ def configure_logging(level: str) -> None:
     root.handlers = [handler]
     root.setLevel(level)
     # Third-party HTTP client debug logs can include headers; keep them quiet.
-    for noisy in ("httpx", "httpcore", "anthropic"):
+    for noisy in ("httpx", "httpx2", "httpcore", "anthropic"):
         logging.getLogger(noisy).setLevel(max(logging.WARNING, logging.getLevelName(level)))
