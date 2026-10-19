@@ -144,3 +144,58 @@ jobs:
           name: playwright-report
           path: frontend/playwright-report
           retention-days: 7
+
+  dependency-audit:
+    name: Dependency audit (runtime)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+      - name: Python runtime dependencies (pip-audit)
+        working-directory: backend
+        run: |
+          uv export --locked --no-dev --no-hashes --format requirements-txt > runtime-requirements.txt
+          uvx pip-audit --requirement runtime-requirements.txt --progress-spinner off
+      - name: npm production dependencies
+        working-directory: frontend
+        run: npm audit --omit=dev --audit-level=high
+
+  docker:
+    name: Docker images and Compose smoke test
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [backend, frontend]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Configure environment
+        run: printf 'POSTGRES_PASSWORD=ci-only-password\n' > .env
+      - name: Build images
+        run: docker compose build
+      - name: Start the stack and wait for health checks
+        run: docker compose up -d --wait --wait-timeout 240
+      - name: Smoke test through the frontend
+        run: |
+          set -euo pipefail
+          base=http://localhost:3000
+          hdr=(-H 'X-Requested-With: fetch' -H "Origin: $base")
+          curl -fsS "$base/login" > /dev/null
+          curl -fsS "$base/api/health/ready" | tee /dev/stderr | grep -q '"status":"ready"'
+          curl -fsS -c jar "${hdr[@]}" -H 'Content-Type: application/json' \
+            -d '{"email":"smoke@example.com","password":"smoke-test-password"}' \
+            "$base/api/auth/register" > /dev/null
+          curl -fsS -b jar "${hdr[@]}" -F file=@data/samples/sales.csv "$base/api/datasets" \
+            | python3 -c "import json,sys; d=json.load(sys.stdin); assert d['row_count'] == 7620, d; print('upload ok')"
+          curl -fsS -b jar "$base/api/config" | grep -q '"analysis_enabled":false'
+          test "$(docker compose exec -T backend id -u)" = "10001"
+          test "$(docker compose exec -T frontend id -u)" = "1000"
+          echo "smoke test passed"
+      - name: Logs on failure
+        if: failure()
+        run: docker compose logs --no-color
+      - name: Tear down
+        if: always()
+        run: docker compose down -v

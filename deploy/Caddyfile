@@ -1,0 +1,11 @@
+# TLS edge for an internet-facing deployment. Caddy obtains and renews certificates for
+# {$DOMAIN} automatically. It replaces any client-supplied X-Forwarded-For with the real client
+# address, which Next.js passes through to the backend (used for per-IP rate limits).
+{$DOMAIN} {
+	encode zstd gzip
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		-Server
+	}
+	reverse_proxy frontend:3000
+}

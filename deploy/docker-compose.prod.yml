@@ -1,0 +1,35 @@
+# Production overlay: adds the TLS edge and stops publishing the frontend directly.
+#
+#   docker compose -f docker-compose.yml -f deploy/docker-compose.prod.yml up --build -d
+#
+# Requires in .env: DOMAIN (a DNS name pointing at this host), PUBLIC_ORIGIN=https://$DOMAIN,
+# POSTGRES_PASSWORD, ANTHROPIC_API_KEY. ENVIRONMENT is forced to production (secure cookies).
+
+services:
+  backend:
+    environment:
+      ENVIRONMENT: production
+      ENABLE_API_DOCS: "false"
+
+  frontend:
+    ports: !reset []
+
+  edge:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      DOMAIN: ${DOMAIN:?Set DOMAIN in .env}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      frontend:
+        condition: service_healthy
+
+volumes:
+  caddy_data:
+  caddy_config:

@@ -1,0 +1,64 @@
+# Full stack on one machine: PostgreSQL, backend, frontend.
+#
+#   cp .env.example .env    # set POSTGRES_PASSWORD (and ANTHROPIC_API_KEY to enable analysis)
+#   docker compose up --build -d
+#   open http://localhost:3000
+#
+# The backend and database are not published on the host; only the frontend is. For an
+# internet-facing deployment add the TLS edge proxy: see deploy/ and docs/DEPLOYMENT.md.
+
+name: autonomous-data-analyst
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-ada}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-ada}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ada} -d ${POSTGRES_DB:-ada}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-ada}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-ada}
+      STORAGE_DIR: /data/storage
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      ALLOWED_ORIGINS: ${PUBLIC_ORIGIN:-http://localhost:3000}
+      # Only the frontend (and an edge proxy) can reach the backend on this private network,
+      # so their X-Forwarded-For headers are trusted.
+      FORWARDED_ALLOW_IPS: "*"
+    volumes:
+      - storage:/data/storage
+    expose:
+      - "8000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        BACKEND_INTERNAL_URL: http://backend:8000
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  pgdata:
+  storage:
