@@ -10,7 +10,8 @@
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "gen:api": "openapi-typescript src/lib/api/openapi.json -o src/lib/api/schema.d.ts"
+    "gen:api": "openapi-typescript src/lib/api/openapi.json -o src/lib/api/schema.d.ts",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@fontsource-variable/source-serif-4": "^5.3.1",

@@ -48,3 +48,6 @@ storage/
 
 # Jupyter
 .ipynb_checkpoints/
+
+# End-to-end test storage
+backend/.e2e-storage/
