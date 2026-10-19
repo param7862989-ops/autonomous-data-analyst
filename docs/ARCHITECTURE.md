@@ -1,7 +1,8 @@
 # Architecture
 
-> Living document. Sections describe the design the code implements; anything not yet built is
-> marked **(planned)**. See [PROJECT_PROGRESS.md](PROJECT_PROGRESS.md) for what is done.
+> Living document: it describes the design the code implements. See
+> [PROJECT_PROGRESS.md](PROJECT_PROGRESS.md) for build history and
+> [KNOWN_LIMITATIONS.md](KNOWN_LIMITATIONS.md) for what is not done or not verified.
 
 ## 1. System overview
 
@@ -62,17 +63,21 @@ flowchart LR
 
 ```
 backend/app/
-  main.py            app factory, middleware, router registration
-  config.py          typed settings from environment
-  errors.py          error envelope + exception handlers
-  db/                SQLAlchemy base, models, session management
-  auth/              password hashing, sessions, dependencies, rate limiting
-  api/               HTTP routers (thin: validate, authorize, call services)
+  main.py            app factory: middleware order, routers, runner wiring
+  config.py          typed settings from environment (with production checks)
+  errors.py          error envelope and handlers; middleware.py adds request ids,
+                     security headers and the sanitized 500; body_limit.py caps bodies
+  db/                SQLAlchemy base (naming conventions), models, session management
+  auth/              Argon2id passwords, session service, CSRF middleware, rate limiter
+  api/               HTTP routers (thin: validate, authorize, call services) and deps
   schemas/           Pydantic request/response models
-  datasets/          ingestion, validation, profiling, storage
-  analytics/         DuckDB sandbox, SQL guard, typed operations, chart specs
-  agent/             LLM providers, tool registry, LangGraph workflow, grounding checks
-  services/          use-case orchestration (datasets, conversations, analysis runs)
+  datasets/          ingestion (ingest.py), type inference, profiling, storage, service
+  analytics/         DuckDB sandbox (engine.py) in a capped child process (isolation.py),
+                     SQL guard, typed operations, chart specs
+  agent/             llm/ (interface, Anthropic, fake), tools, prompts, context,
+                     grounding check, LangGraph workflow (graph.py)
+  services/          conversations and runs (conversations.py), background runner
+backend/evals/       evaluation datasets, cases, scoring and runner
 ```
 
 Rules:
@@ -96,7 +101,7 @@ sequenceDiagram
     participant D as PostgreSQL
 
     U->>A: POST /api/conversations/{id}/analyses {question}
-    A->>D: verify ownership, insert analysis_run (queued) + user message
+    A->>D: verify ownership, insert analysis_run (queued)
     A->>R: submit run
     A-->>U: 202 {run_id}
     R->>G: invoke(state)
@@ -143,8 +148,11 @@ datasets are never sent.
 
 ## 6. Analytical sandbox
 
-Per analysis run:
+Per analysis run, in a child process started for that run (`analytics/isolation.py`):
 
+0. The child removes secret-looking environment variables it inherited and, on Linux, caps its
+   own address space (`ANALYTICS_PROCESS_MEMORY_BYTES`, default 2 GiB; it needs about 1.3 GB
+   before its first query). Then:
 1. `duckdb.connect(":memory:")` with thread and memory limits and extension autoload disabled.
 2. `CREATE TABLE data AS SELECT * FROM read_parquet(<this dataset's file>)`.
 3. `SET enable_external_access = false; SET lock_configuration = true;`
@@ -152,14 +160,31 @@ Per analysis run:
    fetched with a row cap, values converted to JSON-safe types.
 
 Defence in depth: even if the validator missed something, the engine has no filesystem/network
-access, no other tables, and cannot change its own configuration.
+access, no other tables, and cannot change its own configuration. Allocations that DuckDB's own
+`memory_limit` does not govern (large string results) hit the process cap and fail inside the
+child; a query that outlives its timeout by 5 seconds gets the child killed; a dead child is
+restarted for the next query. The API process never runs model-driven SQL itself.
 
 ## 7. Data model
 
-See [DATA_MODEL.md](DATA_MODEL.md) **(planned)**. Entities: users, sessions, datasets,
-conversations, messages, analysis_runs, analysis_events.
+See [DATA_MODEL.md](DATA_MODEL.md). Entities: users, sessions, datasets, conversations,
+analysis_runs (one per question; the conversation turn), analysis_events.
 
 ## 8. Deployment topology
 
-See [DEPLOYMENT.md](DEPLOYMENT.md) **(planned)**. Three containers (frontend, backend,
-PostgreSQL) plus a persistent volume for dataset files.
+See [DEPLOYMENT.md](DEPLOYMENT.md). Frontend, backend and PostgreSQL containers with persistent
+volumes; in production a Caddy edge terminates TLS and sets `X-Forwarded-For` (Next.js rewrites
+do not), and only the edge is published.
+
+## 9. Request path and middleware order
+
+Browser → (Caddy) → Next.js (`src/proxy.ts` rejects oversized uploads with a 413 before Next.js
+buffers them, then the `/api` rewrite) → FastAPI middleware, outermost first:
+
+1. **RequestContext**: request id, security headers, sanitized 500 for unexpected errors.
+2. **CORS**: only configured origins, credentials allowed.
+3. **CSRF**: unsafe methods need `X-Requested-With: fetch`, a configured `Origin` if one is
+   sent, and no cross-site Fetch Metadata.
+4. **Body size limit**: declared and streamed size checked (upload route: file limit plus
+   multipart overhead; everything else: 1 MB).
+5. Routes: authentication dependency, rate limits, validation, services.

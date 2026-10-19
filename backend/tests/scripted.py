@@ -98,8 +98,8 @@ def _answer(call: Call) -> dict[str, Any]:
         ),
         "findings": [
             {
-                "statement": f"{worst[0]} revenue changed by ${worst[3]:,.0f}, the largest drop "
-                "of any region.",
+                "statement": f"{worst[0]} revenue fell by ${abs(worst[3]):,.0f}, the largest "
+                "drop of any region.",
                 "kind": "fact",
                 "evidence": [result["id"]],
             },
