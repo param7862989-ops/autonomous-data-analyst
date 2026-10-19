@@ -6,7 +6,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Annotated, Literal
 
-from pydantic import Field, field_validator, model_validator
+from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 Environment = Literal["development", "test", "production"]
@@ -76,6 +76,25 @@ class Settings(BaseSettings):
     analytics_memory_limit: str = Field(default="512MB", pattern=r"^\d+(KB|MB|GB)$")
     analytics_threads: int = Field(default=2, ge=1, le=16)
 
+    # --- LLM provider --------------------------------------------------------------------
+    # Without an API key the app works for upload and profiling; analysis is disabled.
+    anthropic_api_key: SecretStr | None = None
+    llm_model: str = "claude-opus-5-5"
+    llm_effort: Literal["low", "medium", "high", "xhigh", "max"] = "medium"
+    llm_timeout_seconds: float = Field(default=120.0, gt=0, le=600)
+    llm_max_retries: int = Field(default=2, ge=0, le=5)
+    # Server-side refusal fallback (Anthropic beta): a declined request is re-run on a
+    # fallback model inside the same call instead of failing.
+    llm_refusal_fallback: bool = True
+
+    # --- Agent bounds --------------------------------------------------------------------
+    agent_max_iterations: int = Field(default=6, ge=1, le=20)
+    agent_max_tool_calls: int = Field(default=12, ge=1, le=50)
+    agent_max_tool_calls_per_turn: int = Field(default=4, ge=1, le=10)
+    agent_deadline_seconds: float = Field(default=240.0, ge=10, le=1800)
+    analysis_workers: int = Field(default=4, ge=1, le=32)
+    analyses_per_user_per_hour: int = Field(default=30, ge=1)
+
     @field_validator("allowed_origins", mode="before")
     @classmethod
     def _split_origins(cls, value: object) -> object:
@@ -96,6 +115,12 @@ class Settings(BaseSettings):
     @property
     def is_production(self) -> bool:
         return self.environment == "production"
+
+    @property
+    def analysis_enabled(self) -> bool:
+        return self.anthropic_api_key is not None and bool(
+            self.anthropic_api_key.get_secret_value().strip()
+        )
 
     @property
     def secure_cookies(self) -> bool:
