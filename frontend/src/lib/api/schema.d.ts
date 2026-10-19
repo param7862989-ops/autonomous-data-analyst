@@ -4,6 +4,60 @@
  */
 
 export interface paths {
+    "/api/analyses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Your analysis history */
+        get: operations["list_analyses_api_analyses_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/analyses/{run_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * An analysis: status, activity and result
+         * @description Poll while `status` is `queued` or `running`.
+         */
+        get: operations["get_analysis_api_analyses__run_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/analyses/{run_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel a queued or running analysis */
+        post: operations["cancel_analysis_api_analyses__run_id__cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/login": {
         parameters: {
             query?: never;
@@ -66,6 +120,80 @@ export interface paths {
         put?: never;
         /** Create an account and sign in */
         post: operations["register_api_auth_register_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Features available on this server */
+        get: operations["server_config_api_config_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/conversations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List your conversations */
+        get: operations["list_conversations_api_conversations_get"];
+        put?: never;
+        /** Start a conversation about a dataset */
+        post: operations["create_conversation_api_conversations_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/conversations/{conversation_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A conversation and its questions */
+        get: operations["get_conversation_api_conversations__conversation_id__get"];
+        put?: never;
+        post?: never;
+        /** Delete a conversation and its analyses */
+        delete: operations["delete_conversation_api_conversations__conversation_id__delete"];
+        options?: never;
+        head?: never;
+        /** Rename */
+        patch: operations["rename_conversation_api_conversations__conversation_id__patch"];
+        trace?: never;
+    };
+    "/api/conversations/{conversation_id}/analyses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ask a question (starts an analysis)
+         * @description Queues an analysis and returns immediately. Poll `GET /api/analyses/{id}` for progress events and the result. Earlier questions in the same conversation are used as context for follow-ups.
+         */
+        post: operations["start_analysis_api_conversations__conversation_id__analyses_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -189,6 +317,113 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** ActivityEventOut */
+        ActivityEventOut: {
+            /** Detail */
+            detail: string | null;
+            /** Key */
+            key: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "step" | "tool";
+            /** Label */
+            label: string;
+            /** Result Id */
+            result_id: string | null;
+            /** Seq */
+            seq: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "running" | "completed" | "failed";
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /**
+         * AgentOutcome
+         * @description Everything a run produced. Persisted as the analysis result.
+         */
+        AgentOutcome: {
+            answer?: components["schemas"]["FinalAnswer"] | null;
+            /** Charts */
+            charts?: components["schemas"]["ChartSpec"][];
+            /** Error Code */
+            error_code?: string | null;
+            /** Error Message */
+            error_message?: string | null;
+            grounding?: components["schemas"]["GroundingReport"] | null;
+            /**
+             * Iterations
+             * @default 0
+             */
+            iterations: number;
+            plan?: components["schemas"]["AnalysisPlan"] | null;
+            /** Results */
+            results?: components["schemas"]["StoredResult"][];
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "completed" | "failed" | "cancelled";
+            /**
+             * Stop Reason
+             * @enum {string}
+             */
+            stop_reason: "completed" | "not_answerable" | "iteration_limit" | "tool_limit" | "deadline" | "cancelled" | "error";
+            /**
+             * Tool Calls
+             * @default 0
+             */
+            tool_calls: number;
+            /** Usage */
+            usage?: {
+                [key: string]: unknown;
+            };
+        };
+        /** AnalysisCreate */
+        AnalysisCreate: {
+            /** Question */
+            question: string;
+        };
+        /** AnalysisPlan */
+        AnalysisPlan: {
+            /**
+             * Answerable
+             * @description False when the dataset lacks the information needed to answer.
+             */
+            answerable: boolean;
+            /**
+             * Intent
+             * @enum {string}
+             */
+            intent: "aggregation" | "trend" | "comparison" | "ranking" | "breakdown" | "relationship" | "outliers" | "missing_data" | "data_quality" | "lookup" | "other";
+            /**
+             * Interpretation
+             * @description How ambiguous terms were resolved, e.g. which year 'Q3' refers to.
+             */
+            interpretation?: string | null;
+            /**
+             * Missing Information
+             * @description If not answerable: what data would be needed.
+             */
+            missing_information?: string | null;
+            /**
+             * Relevant Columns
+             * @description Exact column names from the dataset.
+             */
+            relevant_columns: string[];
+            /**
+             * Steps
+             * @description 1 to 6 steps.
+             */
+            steps: components["schemas"]["PlannedStep"][];
+        };
         /** Body_upload_dataset_api_datasets_post */
         Body_upload_dataset_api_datasets_post: {
             /**
@@ -200,6 +435,38 @@ export interface components {
             name?: string | null;
             /** Sheet Name */
             sheet_name?: string | null;
+        };
+        /** ChartSpec */
+        ChartSpec: {
+            /**
+             * Chart Type
+             * @enum {string}
+             */
+            chart_type: "line" | "bar" | "grouped_bar" | "stacked_bar" | "histogram" | "scatter" | "heatmap";
+            heatmap?: components["schemas"]["HeatmapData"] | null;
+            /** Id */
+            id: string;
+            /** Notes */
+            notes?: string[];
+            /** Source Result Id */
+            source_result_id: string;
+            /** Title */
+            title: string;
+            /** Traces */
+            traces?: components["schemas"]["ChartTrace"][];
+            /** X Label */
+            x_label: string;
+            /** Y Label */
+            y_label: string;
+        };
+        /** ChartTrace */
+        ChartTrace: {
+            /** Name */
+            name: string;
+            /** X */
+            x: (boolean | number | string | null)[];
+            /** Y */
+            y: (number | null)[];
         };
         /** ColumnInfo */
         ColumnInfo: {
@@ -243,6 +510,92 @@ export interface components {
             top_values?: components["schemas"]["ValueCount"][] | null;
             /** Unique Count */
             unique_count: number;
+        };
+        /** ConversationCreate */
+        ConversationCreate: {
+            /**
+             * Dataset Id
+             * Format: uuid
+             */
+            dataset_id: string;
+            /** Title */
+            title?: string | null;
+        };
+        /** ConversationDetail */
+        ConversationDetail: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Dataset Id
+             * Format: uuid
+             */
+            dataset_id: string;
+            /** Dataset Name */
+            dataset_name: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Run Count */
+            run_count: number;
+            /** Runs */
+            runs: components["schemas"]["RunSummary"][];
+            /** Title */
+            title: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** ConversationList */
+        ConversationList: {
+            /** Items */
+            items: components["schemas"]["ConversationSummary"][];
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+            /** Total */
+            total: number;
+        };
+        /** ConversationSummary */
+        ConversationSummary: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Dataset Id
+             * Format: uuid
+             */
+            dataset_id: string;
+            /** Dataset Name */
+            dataset_name: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Run Count */
+            run_count: number;
+            /** Title */
+            title: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** ConversationUpdate */
+        ConversationUpdate: {
+            /** Title */
+            title: string;
         };
         /** DataQualityWarning */
         DataQualityWarning: {
@@ -387,6 +740,67 @@ export interface components {
         ErrorResponse: {
             error: components["schemas"]["ErrorDetail"];
         };
+        /** FinalAnswer */
+        FinalAnswer: {
+            /**
+             * Caveats
+             * @description Limitations: data quality, missing information, assumptions.
+             */
+            caveats: string[];
+            /**
+             * Chart Ids
+             * @description Ids of created charts worth showing, e.g. c1.
+             */
+            chart_ids: string[];
+            /**
+             * Findings
+             * @description Up to 8 findings, most important first.
+             */
+            findings: components["schemas"]["Finding"][];
+            /**
+             * Follow Up Questions
+             * @description Up to 3 useful next questions.
+             */
+            follow_up_questions: string[];
+            /**
+             * Summary
+             * @description A direct answer to the question in 1 to 3 sentences.
+             */
+            summary: string;
+        };
+        /** Finding */
+        Finding: {
+            /**
+             * Evidence
+             * @description Result ids (e.g. r2) that support the statement.
+             */
+            evidence: string[];
+            /**
+             * Kind
+             * @description fact: directly shown by a computed result. hypothesis: a possible explanation the data does not prove.
+             * @enum {string}
+             */
+            kind: "fact" | "hypothesis";
+            /**
+             * Statement
+             * @description One sentence. Use numbers exactly as computed.
+             */
+            statement: string;
+        };
+        /** GroundingReport */
+        GroundingReport: {
+            /**
+             * Checked Numbers
+             * @default 0
+             */
+            checked_numbers: number;
+            /** Invalid References */
+            invalid_references?: string[];
+            /** Unsupported Facts */
+            unsupported_facts?: string[];
+            /** Unverified Numbers */
+            unverified_numbers?: string[];
+        };
         /** HealthResponse */
         HealthResponse: {
             /**
@@ -394,6 +808,15 @@ export interface components {
              * @constant
              */
             status: "ok";
+        };
+        /** HeatmapData */
+        HeatmapData: {
+            /** X */
+            x: string[];
+            /** Y */
+            y: string[];
+            /** Z */
+            z: (number | null)[][];
         };
         /** HistogramBin */
         HistogramBin: {
@@ -403,6 +826,55 @@ export interface components {
             end: number;
             /** Start */
             start: number;
+        };
+        /** HistoryItem */
+        HistoryItem: {
+            /** Answer Summary */
+            answer_summary: string | null;
+            /**
+             * Conversation Id
+             * Format: uuid
+             */
+            conversation_id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Dataset Id
+             * Format: uuid
+             */
+            dataset_id: string;
+            /** Dataset Name */
+            dataset_name: string;
+            /** Finished At */
+            finished_at: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Question */
+            question: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "queued" | "running" | "completed" | "failed" | "cancelled";
+            /** Stop Reason */
+            stop_reason: string | null;
+        };
+        /** HistoryList */
+        HistoryList: {
+            /** Items */
+            items: components["schemas"]["HistoryItem"][];
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+            /** Total */
+            total: number;
         };
         /** LoginRequest */
         LoginRequest: {
@@ -437,6 +909,19 @@ export interface components {
             /** Zeros */
             zeros: number;
         };
+        /** PlannedStep */
+        PlannedStep: {
+            /**
+             * Description
+             * @description One short sentence: what to compute and why.
+             */
+            description: string;
+            /**
+             * Tool
+             * @enum {string}
+             */
+            tool: "inspect_dataset" | "get_dataset_profile" | "execute_analysis" | "execute_sql" | "create_chart";
+        };
         /** ReadinessCheck */
         ReadinessCheck: {
             /** Name */
@@ -463,6 +948,144 @@ export interface components {
             email: string;
             /** Password */
             password: string;
+        };
+        /** ResultColumn */
+        ResultColumn: {
+            /** Name */
+            name: string;
+            /** Type */
+            type: string;
+        };
+        /** RunDetail */
+        RunDetail: {
+            /** Answer Summary */
+            answer_summary: string | null;
+            /** Cancel Requested */
+            cancel_requested: boolean;
+            /**
+             * Conversation Id
+             * Format: uuid
+             */
+            conversation_id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Dataset Id
+             * Format: uuid
+             */
+            dataset_id: string;
+            /** Error Code */
+            error_code: string | null;
+            /** Error Message */
+            error_message: string | null;
+            /** Events */
+            events: components["schemas"]["ActivityEventOut"][];
+            /** Finished At */
+            finished_at: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Model */
+            model: string | null;
+            outcome: components["schemas"]["AgentOutcome"] | null;
+            /** Question */
+            question: string;
+            /** Started At */
+            started_at: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "queued" | "running" | "completed" | "failed" | "cancelled";
+            /** Stop Reason */
+            stop_reason: string | null;
+        };
+        /** RunSummary */
+        RunSummary: {
+            /** Answer Summary */
+            answer_summary: string | null;
+            /**
+             * Conversation Id
+             * Format: uuid
+             */
+            conversation_id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Dataset Id
+             * Format: uuid
+             */
+            dataset_id: string;
+            /** Finished At */
+            finished_at: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Question */
+            question: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "queued" | "running" | "completed" | "failed" | "cancelled";
+            /** Stop Reason */
+            stop_reason: string | null;
+        };
+        /** ServerConfig */
+        ServerConfig: {
+            /** Analysis Enabled */
+            analysis_enabled: boolean;
+            /**
+             * Max Question Length
+             * @default 2000
+             */
+            max_question_length: number;
+            /** Model */
+            model: string | null;
+        };
+        /** StoredResult */
+        StoredResult: {
+            /** Description */
+            description: string;
+            /** Id */
+            id: string;
+            /** Notes */
+            notes?: string[];
+            /** Operation */
+            operation: string;
+            /** Sql */
+            sql?: string | null;
+            /** Summary */
+            summary?: {
+                [key: string]: boolean | number | string | null;
+            };
+            table: components["schemas"]["TableResult"];
+            /** Tool */
+            tool: string;
+        };
+        /**
+         * TableResult
+         * @description Rows returned by the engine, JSON-safe, with a flag when the row cap cut them off.
+         */
+        TableResult: {
+            /** Columns */
+            columns: components["schemas"]["ResultColumn"][];
+            /** Row Count */
+            row_count: number;
+            /** Rows */
+            rows: (boolean | number | string | null)[][];
+            /** Truncated */
+            truncated: boolean;
         };
         /** TextStats */
         TextStats: {
@@ -515,6 +1138,156 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    list_analyses_api_analyses_get: {
+        parameters: {
+            query?: {
+                dataset_id?: string | null;
+                conversation_id?: string | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HistoryList"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Client error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Server error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_analysis_api_analyses__run_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunDetail"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Client error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Server error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    cancel_analysis_api_analyses__run_id__cancel_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunSummary"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Client error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Server error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     login_api_auth_login_post: {
         parameters: {
             query?: never;
@@ -678,6 +1451,357 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UserResponse"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Client error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Server error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    server_config_api_config_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServerConfig"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Client error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Server error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    list_conversations_api_conversations_get: {
+        parameters: {
+            query?: {
+                dataset_id?: string | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConversationList"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Client error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Server error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    create_conversation_api_conversations_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConversationCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConversationDetail"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Client error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Server error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_conversation_api_conversations__conversation_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                conversation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConversationDetail"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Client error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Server error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    delete_conversation_api_conversations__conversation_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                conversation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Client error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Server error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    rename_conversation_api_conversations__conversation_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                conversation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConversationUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConversationDetail"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Client error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Server error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    start_analysis_api_conversations__conversation_id__analyses_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                conversation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AnalysisCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunSummary"];
                 };
             };
             /** @description Validation error */

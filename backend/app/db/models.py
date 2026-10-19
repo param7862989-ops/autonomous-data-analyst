@@ -10,7 +10,17 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import BigInteger, CheckConstraint, ForeignKey, Index, String
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    CheckConstraint,
+    ForeignKey,
+    Index,
+    String,
+    Text,
+    UniqueConstraint,
+    false,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, Timestamps, UUIDPrimaryKey, utcnow
@@ -76,3 +86,93 @@ class Dataset(UUIDPrimaryKey, Timestamps, Base):
     profile: Mapped[dict[str, Any]]
 
     user: Mapped[User] = relationship(back_populates="datasets")
+
+    conversations: Mapped[list[Conversation]] = relationship(
+        back_populates="dataset", cascade="all, delete-orphan", passive_deletes=True
+    )
+
+
+class Conversation(UUIDPrimaryKey, Timestamps, Base):
+    """A thread of questions about one dataset. Each turn is one AnalysisRun."""
+
+    __tablename__ = "conversations"
+    __table_args__ = (
+        Index("ix_conversations_user_id_updated_at", "user_id", "updated_at"),
+        Index("ix_conversations_dataset_id", "dataset_id"),
+    )
+
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    dataset_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("datasets.id", ondelete="CASCADE"))
+    title: Mapped[str] = mapped_column(String(200))
+
+    dataset: Mapped[Dataset] = relationship(back_populates="conversations")
+    runs: Mapped[list[AnalysisRun]] = relationship(
+        back_populates="conversation",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        order_by="AnalysisRun.created_at",
+    )
+
+
+RUN_STATUSES = ("queued", "running", "completed", "failed", "cancelled")
+
+
+class AnalysisRun(UUIDPrimaryKey, Timestamps, Base):
+    """One question and everything the agent produced for it."""
+
+    __tablename__ = "analysis_runs"
+    __table_args__ = (
+        Index("ix_analysis_runs_user_id_created_at", "user_id", "created_at"),
+        Index("ix_analysis_runs_conversation_id_created_at", "conversation_id", "created_at"),
+        Index("ix_analysis_runs_status", "status"),
+        CheckConstraint(f"status IN {RUN_STATUSES}", name="status"),
+    )
+
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    conversation_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("conversations.id", ondelete="CASCADE")
+    )
+    dataset_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("datasets.id", ondelete="CASCADE"))
+    question: Mapped[str] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(16), default="queued")
+    stop_reason: Mapped[str | None] = mapped_column(String(32))
+    cancel_requested: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    error_code: Mapped[str | None] = mapped_column(String(64))
+    error_message: Mapped[str | None] = mapped_column(Text)
+    model: Mapped[str | None] = mapped_column(String(100))
+    # AgentOutcome: plan, answer, results, charts, grounding report and token usage.
+    outcome: Mapped[dict[str, Any] | None]
+    started_at: Mapped[datetime | None]
+    finished_at: Mapped[datetime | None]
+
+    conversation: Mapped[Conversation] = relationship(back_populates="runs")
+    events: Mapped[list[AnalysisEvent]] = relationship(
+        back_populates="run",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        order_by="AnalysisEvent.seq",
+    )
+
+
+class AnalysisEvent(Base):
+    """A user-visible activity step of a run. Upserted by (run_id, key) as it progresses."""
+
+    __tablename__ = "analysis_events"
+    __table_args__ = (
+        UniqueConstraint("run_id", "key", name="uq_analysis_events_run_id_key"),
+        Index("ix_analysis_events_run_id_seq", "run_id", "seq"),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    run_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("analysis_runs.id", ondelete="CASCADE"))
+    key: Mapped[str] = mapped_column(String(64))
+    seq: Mapped[int]
+    kind: Mapped[str] = mapped_column(String(16))
+    label: Mapped[str] = mapped_column(String(300))
+    status: Mapped[str] = mapped_column(String(16))
+    detail: Mapped[str | None] = mapped_column(Text)
+    result_id: Mapped[str | None] = mapped_column(String(16))
+    created_at: Mapped[datetime] = mapped_column(default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(default=utcnow, onupdate=utcnow)
+
+    run: Mapped[AnalysisRun] = relationship(back_populates="events")
