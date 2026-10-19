@@ -11,12 +11,23 @@ __pycache__/
 venv/
 .pytest_cache/
 .mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
 
 # Node
 node_modules/
 .next/
 out/
 dist/
+*.tsbuildinfo
+next-env.d.ts
+playwright-report/
+test-results/
+blob-report/
+coverage/
 
 # IDE
 .vscode/
@@ -26,9 +37,11 @@ dist/
 .DS_Store
 Thumbs.db
 
-# Data
+# Data (uploaded/user data never belongs in git; synthetic samples in data/samples do)
 data/raw/
 data/processed/
+backend/storage/
+storage/
 
 # Logs
 *.log
