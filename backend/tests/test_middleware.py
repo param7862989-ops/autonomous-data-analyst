@@ -1,6 +1,11 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from fastapi.testclient import TestClient
+
+from app.main import DOCS_URL, OPENAPI_URL, create_app
+from tests.conftest import CSRF_HEADERS, make_settings
 
 
 def test_security_headers_present(client: TestClient) -> None:
@@ -22,6 +27,15 @@ def test_docs_are_served_without_api_csp(client: TestClient) -> None:
     response = client.get("/api/docs")
     assert response.status_code == 200
     assert "Content-Security-Policy" not in response.headers
+
+
+def test_api_docs_can_be_disabled(tmp_path: Path) -> None:
+    # The production overlay sets ENABLE_API_DOCS=false.
+    app = create_app(make_settings(tmp_path, enable_api_docs=False))
+    with TestClient(app, raise_server_exceptions=False, headers=CSRF_HEADERS) as client:
+        assert client.get(DOCS_URL).status_code == 404
+        assert client.get(OPENAPI_URL).status_code == 404
+        assert client.get("/api/health").status_code == 200
 
 
 def test_cors_allows_configured_origin_only(client: TestClient) -> None:

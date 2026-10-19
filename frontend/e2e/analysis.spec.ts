@@ -24,6 +24,21 @@ test("unauthenticated visitors are sent to sign in", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
 });
 
+test("pages send security headers", async ({ page }) => {
+  const response = await page.goto("/login");
+  const headers = response?.headers() ?? {};
+  const csp = headers["content-security-policy"] ?? "";
+  for (const directive of ["default-src 'self'", "object-src 'none'", "frame-ancestors 'none'"]) {
+    expect(csp).toContain(directive);
+  }
+  // The production build must not allow eval (only the dev server needs it).
+  expect(csp).not.toContain("unsafe-eval");
+  expect(headers["x-frame-options"]).toBe("DENY");
+  expect(headers["x-content-type-options"]).toBe("nosniff");
+  expect(headers["referrer-policy"]).toBe("strict-origin-when-cross-origin");
+  expect(headers["x-powered-by"]).toBeUndefined();
+});
+
 test("upload, profile, analyse, follow up, revisit, and isolation between users", async ({
   page,
   browser,
