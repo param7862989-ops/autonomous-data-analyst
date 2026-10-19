@@ -32,6 +32,10 @@ _CSV_EXTENSIONS = frozenset({".csv", ".tsv", ".txt"})
 _MAX_ZIP_ENTRIES = 10_000
 _MAX_LEADING_EMPTY_ROWS = 1_000
 _EXCEL_MAX_COLUMNS = 16_384
+_EXCEL_MAX_ROWS = 1_048_576
+# Empty rows tolerated beyond the row limit before a sheet is rejected. openpyxl yields an empty
+# row for every gap in row numbers, so a tiny file can claim billions of rows.
+_EMPTY_ROW_ALLOWANCE = 100_000
 
 
 class DatasetFileError(AppError):
@@ -171,6 +175,17 @@ def _sniff_delimiter(text: str) -> str:
 _BAD_LINE = re.compile(r"Expected (\d+) fields in line (\d+), saw (\d+)")
 
 
+def _header_width(text: str, delimiter: str) -> int:
+    """Number of fields in the first record, counted without building a DataFrame."""
+    try:
+        header = next(csv.reader(io.StringIO(text), delimiter=delimiter), [])
+    except csv.Error as exc:
+        raise DatasetFileError(
+            "The first row couldn't be read as CSV column names.", code="malformed_file"
+        ) from exc
+    return len(header)
+
+
 def read_csv(data: bytes, limits: IngestLimits) -> RawTable:
     if not data.strip():
         raise DatasetFileError("The file is empty.", code="empty_file")
@@ -181,6 +196,9 @@ def read_csv(data: bytes, limits: IngestLimits) -> RawTable:
             code="file_type_mismatch",
         )
     delimiter = _sniff_delimiter(text)
+    # Check the width before pandas parses anything: a single line of many thousands of empty
+    # fields is tiny on disk but very expensive as a DataFrame.
+    _check_shape(0, _header_width(text, delimiter), limits)
     try:
         frame = pd.read_csv(
             io.StringIO(text),
@@ -337,9 +355,18 @@ def read_xlsx(data: bytes, sheet_name: str | None, limits: IngestLimits) -> RawT
         _check_shape(0, width, limits)
 
         rows: list[list[Any]] = []
+        scanned = 0
+        scan_limit = min(limits.max_rows + _EMPTY_ROW_ALLOWANCE, _EXCEL_MAX_ROWS)
         for row in worksheet.iter_rows(
             min_row=header_row_index + 1, max_col=width, values_only=True
         ):
+            scanned += 1
+            if scanned > scan_limit:
+                raise DatasetFileError(
+                    f"The sheet has more than {limits.max_rows:,} rows (counting empty rows). "
+                    "Upload a smaller extract.",
+                    code="too_many_rows",
+                )
             values = [_excel_cell(cell) for cell in row]
             # Fully empty rows are usually formatting; skip them (blank CSV lines are skipped too).
             if _is_empty_row(values):

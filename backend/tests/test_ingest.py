@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import datetime as dt
+import io
+import time
+import zipfile
 
 import pytest
 
@@ -232,3 +235,34 @@ def test_xlsx_row_limit() -> None:
     with pytest.raises(DatasetFileError) as excinfo:
         read_xlsx(data, None, limits)
     assert error_code(excinfo) == "too_many_rows"
+
+
+def test_csv_very_wide_header_is_rejected_before_parsing() -> None:
+    # 100,000 empty fields: 100 KB on disk, very expensive as a DataFrame.
+    data = ("a," * 100_000 + "a\n" + "1," * 100_000 + "1\n").encode()
+    started = time.perf_counter()
+    with pytest.raises(DatasetFileError) as excinfo:
+        read_csv(data, LIMITS)
+    assert error_code(excinfo) == "too_many_columns"
+    assert time.perf_counter() - started < 2
+
+
+def test_xlsx_phantom_rows_are_bounded() -> None:
+    # A row numbered 10 million makes openpyxl yield ~10 million empty rows from a tiny file.
+    data = xlsx_bytes({"S": [["a", "b"], [1, 2]]})
+    buffer = io.BytesIO(data)
+    with zipfile.ZipFile(buffer) as archive:
+        parts = {name: archive.read(name) for name in archive.namelist()}
+    sheet = parts["xl/worksheets/sheet1.xml"].decode()
+    sheet = sheet.replace('<row r="2"', '<row r="10000000"').replace('r="A2"', 'r="A10000000"')
+    sheet = sheet.replace('r="B2"', 'r="B10000000"').replace('ref="A1:B2"', 'ref="A1:B10000000"')
+    parts["xl/worksheets/sheet1.xml"] = sheet.encode()
+    rebuilt = io.BytesIO()
+    with zipfile.ZipFile(rebuilt, "w") as archive:
+        for name, content in parts.items():
+            archive.writestr(name, content)
+    started = time.perf_counter()
+    with pytest.raises(DatasetFileError) as excinfo:
+        read_xlsx(rebuilt.getvalue(), None, LIMITS)
+    assert error_code(excinfo) == "too_many_rows"
+    assert time.perf_counter() - started < 5
