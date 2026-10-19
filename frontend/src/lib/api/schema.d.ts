@@ -1055,6 +1055,10 @@ export interface components {
         };
         /** StoredResult */
         StoredResult: {
+            /** Arguments */
+            arguments: {
+                [key: string]: unknown;
+            } | null;
             /** Description */
             description: string;
             /** Id */

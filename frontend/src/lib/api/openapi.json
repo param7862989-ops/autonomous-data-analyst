@@ -2035,6 +2035,18 @@
       },
       "StoredResult": {
         "properties": {
+          "arguments": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Arguments"
+          },
           "description": {
             "title": "Description",
             "type": "string"
@@ -2104,7 +2116,8 @@
           "table",
           "summary",
           "notes",
-          "sql"
+          "sql",
+          "arguments"
         ],
         "title": "StoredResult",
         "type": "object"
