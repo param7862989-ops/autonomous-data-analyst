@@ -71,4 +71,27 @@ describe("toPlotly", () => {
     const trace = figure.data[0] as { zmid: number; zmin: number; zmax: number };
     expect([trace.zmin, trace.zmid, trace.zmax]).toEqual([-1, 0, 1]);
   });
+
+  it("escapes text from the data so Plotly cannot render it as links or markup", () => {
+    const link = '<a href="https://example.com/verify">Verify account</a>';
+    const escaped = '&lt;a href="https://example.com/verify"&gt;Verify account&lt;/a&gt;';
+    const bars = toPlotly(
+      spec({ x_label: "<b>Region</b>", traces: [{ name: link, x: [link, "R&D", 3], y: [1, 2, 3] }] }),
+    );
+    const trace = bars.data[0] as { name: string; x: unknown[] };
+    expect(trace.name).toBe(escaped);
+    expect(trace.x).toEqual([escaped, "R&amp;D", 3]);
+    expect((bars.layout.xaxis?.title as { text: string }).text).toBe("&lt;b&gt;Region&lt;/b&gt;");
+
+    const heatmap = toPlotly(
+      spec({ chart_type: "heatmap", heatmap: { x: [link, "b"], y: ["<i>a</i>", "b"], z: [[1, 0], [0, 1]] } }),
+    );
+    const cells = heatmap.data[0] as { x: string[]; y: string[] };
+    expect(cells.x[0]).toBe(escaped);
+    expect(cells.y[0]).toBe("&lt;i&gt;a&lt;/i&gt;");
+
+    for (const figure of [bars, heatmap]) {
+      expect(JSON.stringify(figure)).not.toMatch(/<(a|b|i)[ >]/);
+    }
+  });
 });

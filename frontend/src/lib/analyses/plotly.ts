@@ -35,8 +35,23 @@ const FONT = 'var(--font-plex-sans), "IBM Plex Sans", system-ui, sans-serif';
 
 export type PlotlyFigure = { data: Data[]; layout: Partial<Layout>; config: Partial<Config> };
 
+/**
+ * Plotly renders a small HTML subset (links, bold, styled spans) in every text it draws: ticks,
+ * legend, axis titles and hover labels. Category values and series names come from uploaded
+ * data, so a cell such as `<a href="https://...">Verify</a>` would become a clickable link.
+ * Escaping stops any tag from being parsed; Plotly decodes these entities for display, so "<18"
+ * and "R&D" still read correctly (checked in Chromium against the bundled Plotly).
+ */
+export function escapePlotlyText(text: string): string {
+  return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function escapeValues<T>(values: T[]): T[] {
+  return values.map((v) => (typeof v === "string" ? (escapePlotlyText(v) as T) : v));
+}
+
 function axisTitle(text: string) {
-  return { text, font: { size: 12, color: MUTED } };
+  return { text: escapePlotlyText(text), font: { size: 12, color: MUTED } };
 }
 
 function isNumberList(values: unknown[]): values is number[] {
@@ -44,7 +59,11 @@ function isNumberList(values: unknown[]): values is number[] {
 }
 
 export function toPlotly(spec: ChartSpec): PlotlyFigure {
-  const traces = spec.traces ?? [];
+  const traces = (spec.traces ?? []).map((trace) => ({
+    ...trace,
+    name: escapePlotlyText(trace.name),
+    x: escapeValues(trace.x),
+  }));
   const multiSeries = traces.length > 1;
   const layout: Partial<Layout> = {
     font: { family: FONT, size: 12, color: INK },
@@ -86,8 +105,8 @@ export function toPlotly(spec: ChartSpec): PlotlyFigure {
     const data: Data[] = [
       {
         type: "heatmap",
-        x: spec.heatmap.x,
-        y: spec.heatmap.y,
+        x: escapeValues(spec.heatmap.x),
+        y: escapeValues(spec.heatmap.y),
         z: spec.heatmap.z,
         ...(signed
           ? {
