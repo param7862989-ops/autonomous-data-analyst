@@ -1,22 +1,30 @@
 import { type NextRequest, NextResponse } from "next/server";
 
-const SESSION_COOKIE = "ada_session";
-
 /**
- * Optimistic redirect for visitors with no session cookie at all, so they see the sign-in page
- * instead of a loading state. It never grants access: the backend validates the session on every
- * API request, and an expired cookie is handled client-side.
+ * Must match `experimental.proxyClientMaxBodySize` in next.config.ts. Next.js truncates bodies
+ * beyond that size before the rewrite reaches the backend, which would surface as a bare 500,
+ * so oversized uploads are answered here with the API's normal 413 error envelope.
  */
+const MAX_PROXIED_BODY_BYTES = 26 * 1024 * 1024;
+
 export function proxy(request: NextRequest) {
-  if (request.cookies.has(SESSION_COOKIE)) return NextResponse.next();
-  const { pathname, search } = request.nextUrl;
-  const login = new URL("/login", request.url);
-  if (pathname !== "/") login.searchParams.set("next", `${pathname}${search}`);
-  return NextResponse.redirect(login);
+  const declared = Number(request.headers.get("content-length") ?? 0);
+  if (request.method === "POST" && declared > MAX_PROXIED_BODY_BYTES) {
+    return NextResponse.json(
+      {
+        error: {
+          code: "payload_too_large",
+          message: "The file is larger than the 25 MB upload limit.",
+          details: { limit_bytes: MAX_PROXIED_BODY_BYTES },
+          request_id: null,
+        },
+      },
+      { status: 413 },
+    );
+  }
+  return NextResponse.next();
 }
 
 export const config = {
-  // Not API routes (uploads must not be buffered by the proxy layer), static assets, or the
-  // sign-in pages themselves.
-  matcher: ["/((?!api/|_next/static|_next/image|favicon.ico|login|register).*)"],
+  matcher: ["/api/datasets"],
 };

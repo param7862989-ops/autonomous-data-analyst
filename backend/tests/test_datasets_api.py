@@ -205,3 +205,11 @@ def test_deleting_user_cascades_to_datasets(db_client: TestClient, db_engine: En
         db.delete(db.scalars(select(User)).one())
         db.commit()
         assert db.scalars(select(Dataset)).all() == []
+
+
+def test_upload_limits_endpoint(db_client: TestClient) -> None:
+    assert db_client.get("/api/datasets/limits").status_code == 401
+    register(db_client)
+    limits = db_client.get("/api/datasets/limits").json()
+    assert limits["max_upload_bytes"] == 25 * 1024 * 1024
+    assert ".xlsx" in limits["accepted_extensions"]

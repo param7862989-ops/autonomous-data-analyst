@@ -67,6 +67,11 @@ The browser only talks to the Next.js origin. Next.js rewrites `/api/*` to the b
 `BACKEND_INTERNAL_URL` (default `http://localhost:8000`), so the session cookie is first-party.
 With `output: "standalone"` the rewrite target is fixed at **build** time.
 
+`npm run build` produces a standalone server and `npm start` runs it (the same server the Docker
+image uses). Next.js buffers request bodies that pass through the rewrite;
+`experimental.proxyClientMaxBodySize` in `next.config.ts` is set just above the 25 MB upload
+limit, and `src/proxy.ts` answers larger uploads with a 413 before they are truncated.
+
 ### Quality checks
 
 ```bash

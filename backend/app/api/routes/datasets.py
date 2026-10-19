@@ -19,6 +19,7 @@ from app.schemas.datasets import (
     DatasetList,
     DatasetPreview,
     DatasetSummary,
+    UploadLimits,
 )
 
 router = APIRouter(prefix="/datasets", tags=["datasets"])
@@ -98,6 +99,17 @@ def list_datasets(
         total=total,
         limit=limit,
         offset=offset,
+    )
+
+
+@router.get("/limits", response_model=UploadLimits, summary="Upload limits for this server")
+def upload_limits(_: CurrentUser, settings: SettingsDep) -> UploadLimits:
+    # Declared before /{dataset_id} so "limits" is not parsed as a dataset id.
+    return UploadLimits(
+        max_upload_bytes=settings.max_upload_bytes,
+        max_rows=settings.max_dataset_rows,
+        max_columns=settings.max_dataset_columns,
+        accepted_extensions=[".csv", ".tsv", ".txt", ".xlsx"],
     )
 
 

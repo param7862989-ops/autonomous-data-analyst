@@ -25,6 +25,14 @@ const contentSecurityPolicy = [
 const nextConfig: NextConfig = {
   output: "standalone",
   poweredByHeader: false,
+  experimental: {
+    // Next.js buffers request bodies passing through the /api rewrite and silently truncates
+    // them at 10 MB by default. Keep this just above the backend's MAX_UPLOAD_BYTES (25 MB) plus
+    // multipart overhead; the backend enforces the real limit.
+    proxyClientMaxBodySize: "26mb",
+    // Profiling a maximum-size upload can take longer than the 30 s default on a small host.
+    proxyTimeout: 120_000,
+  },
   turbopack: {
     rules: {
       "*.css": {

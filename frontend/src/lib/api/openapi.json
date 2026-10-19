@@ -853,6 +853,37 @@
         "title": "TextStats",
         "type": "object"
       },
+      "UploadLimits": {
+        "properties": {
+          "accepted_extensions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Accepted Extensions",
+            "type": "array"
+          },
+          "max_columns": {
+            "title": "Max Columns",
+            "type": "integer"
+          },
+          "max_rows": {
+            "title": "Max Rows",
+            "type": "integer"
+          },
+          "max_upload_bytes": {
+            "title": "Max Upload Bytes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "max_upload_bytes",
+          "max_rows",
+          "max_columns",
+          "accepted_extensions"
+        ],
+        "title": "UploadLimits",
+        "type": "object"
+      },
       "UserResponse": {
         "properties": {
           "created_at": {
@@ -1253,6 +1284,57 @@
           }
         },
         "summary": "Upload a CSV or XLSX file",
+        "tags": [
+          "datasets"
+        ]
+      }
+    },
+    "/api/datasets/limits": {
+      "get": {
+        "operationId": "upload_limits_api_datasets_limits_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadLimits"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Validation error"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Client error"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Server error"
+          }
+        },
+        "summary": "Upload limits for this server",
         "tags": [
           "datasets"
         ]

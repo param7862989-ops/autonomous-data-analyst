@@ -50,3 +50,10 @@ class DatasetPreview(BaseModel):
     offset: int
     limit: int
     total_rows: int
+
+
+class UploadLimits(BaseModel):
+    max_upload_bytes: int
+    max_rows: int
+    max_columns: int
+    accepted_extensions: list[str]

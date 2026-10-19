@@ -1,14 +1,17 @@
 "use client";
 
 import { clsx } from "clsx";
-import { LayoutGrid, LogOut } from "lucide-react";
+import { Database, LayoutGrid, LogOut } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
 import { BrandMark } from "@/components/brand-mark";
 import { useCurrentUser, useLogout } from "@/lib/auth/hooks";
 
-const NAV_ITEMS = [{ href: "/", label: "Overview", Icon: LayoutGrid }] as const;
+const NAV_ITEMS = [
+  { href: "/", label: "Overview", Icon: LayoutGrid },
+  { href: "/datasets", label: "Datasets", Icon: Database },
+] as const;
 
 function isActive(pathname: string, href: string): boolean {
   return href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`);
