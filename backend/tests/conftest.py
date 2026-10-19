@@ -143,3 +143,18 @@ def sales_engine(sales_dataset: tuple[Path, DatasetSchema]) -> Iterator[Analytic
 @pytest.fixture
 def sales_schema(sales_dataset: tuple[Path, DatasetSchema]) -> DatasetSchema:
     return sales_dataset[1]
+
+
+@pytest.fixture(scope="session")
+def sales_metadata() -> tuple[list[dict[str, object]], dict[str, object]]:
+    """(columns, profile) exactly as stored for an uploaded copy of the sample dataset."""
+    from dataclasses import asdict
+
+    from app.datasets.inference import infer_table
+    from app.datasets.ingest import IngestLimits, read_csv
+    from app.datasets.profiling import build_profile
+
+    raw = read_csv(SAMPLE_SALES.read_bytes(), IngestLimits(1_000_000, 100, 50_000_000, 1))
+    typed = infer_table(raw.headers, raw.frame)
+    profile = build_profile(typed.frame, typed.columns, typed.notes)
+    return [asdict(c) for c in typed.columns], profile.model_dump(mode="json")
