@@ -105,6 +105,9 @@ class RunDetail(RunSummary):
 
 
 class ServerConfig(BaseModel):
+    # Fields with defaults are always present in responses; say so in the schema.
+    model_config = ConfigDict(json_schema_serialization_defaults_required=True)
+
     analysis_enabled: bool
     model: str | None
     max_question_length: int = 2_000

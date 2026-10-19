@@ -1,3 +1,4 @@
+import { OverviewSummary } from "@/components/overview-summary";
 import { SystemStatus } from "@/components/system-status";
 
 const STEPS = [
@@ -24,7 +25,11 @@ export default function OverviewPage() {
         computation you can inspect.
       </p>
 
-      <section aria-labelledby="how-heading" className="mt-10">
+      <div className="mt-8">
+        <OverviewSummary />
+      </div>
+
+      <section aria-labelledby="how-heading" className="mt-12">
         <h2 id="how-heading" className="text-base font-semibold">
           How it works
         </h2>

@@ -96,8 +96,8 @@ def test_empty_result_cannot_be_charted() -> None:
 
 
 def test_too_many_series() -> None:
-    rows = [["2024", f"g{i}", float(i)] for i in range(13)]
-    with pytest.raises(ChartError, match="more than 12"):
+    rows = [["2024", f"g{i}", float(i)] for i in range(9)]
+    with pytest.raises(ChartError, match="more than 8"):
         build_chart(
             request(x="period", y=["revenue"], series="region"),
             table(["period", "region", "revenue"], rows),

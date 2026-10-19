@@ -182,7 +182,17 @@
         },
         "required": [
           "status",
-          "stop_reason"
+          "stop_reason",
+          "plan",
+          "answer",
+          "results",
+          "charts",
+          "grounding",
+          "error_code",
+          "error_message",
+          "iterations",
+          "tool_calls",
+          "usage"
         ],
         "title": "AgentOutcome",
         "type": "object"
@@ -383,7 +393,10 @@
           "title",
           "x_label",
           "y_label",
-          "source_result_id"
+          "source_result_id",
+          "traces",
+          "heatmap",
+          "notes"
         ],
         "title": "ChartSpec",
         "type": "object"
@@ -583,7 +596,12 @@
           "non_null_count",
           "missing_count",
           "missing_share",
-          "unique_count"
+          "unique_count",
+          "numeric",
+          "histogram",
+          "datetime",
+          "text",
+          "top_values"
         ],
         "title": "ColumnProfile",
         "type": "object"
@@ -797,7 +815,8 @@
         "required": [
           "code",
           "severity",
-          "message"
+          "message",
+          "column"
         ],
         "title": "DataQualityWarning",
         "type": "object"
@@ -1282,6 +1301,12 @@
             "type": "array"
           }
         },
+        "required": [
+          "checked_numbers",
+          "unverified_numbers",
+          "invalid_references",
+          "unsupported_facts"
+        ],
         "title": "GroundingReport",
         "type": "object"
       },
@@ -2002,7 +2027,8 @@
         },
         "required": [
           "analysis_enabled",
-          "model"
+          "model",
+          "max_question_length"
         ],
         "title": "ServerConfig",
         "type": "object"
@@ -2075,7 +2101,10 @@
           "tool",
           "operation",
           "description",
-          "table"
+          "table",
+          "summary",
+          "notes",
+          "sql"
         ],
         "title": "StoredResult",
         "type": "object"

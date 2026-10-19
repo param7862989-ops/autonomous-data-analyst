@@ -1,7 +1,7 @@
 "use client";
 
 import { clsx } from "clsx";
-import { Database, LayoutGrid, LogOut } from "lucide-react";
+import { Database, History, LayoutGrid, LogOut } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
@@ -11,6 +11,7 @@ import { useCurrentUser, useLogout } from "@/lib/auth/hooks";
 const NAV_ITEMS = [
   { href: "/", label: "Overview", Icon: LayoutGrid },
   { href: "/datasets", label: "Datasets", Icon: Database },
+  { href: "/history", label: "History", Icon: History },
 ] as const;
 
 function isActive(pathname: string, href: string): boolean {

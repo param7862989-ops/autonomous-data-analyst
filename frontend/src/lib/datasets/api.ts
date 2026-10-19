@@ -41,6 +41,8 @@ export function useUploadLimits() {
 export function useDataset(id: string) {
   return useQuery({
     queryKey: datasetKeys.detail(id),
+    // Callers may not know the id yet (e.g. while a conversation loads).
+    enabled: Boolean(id),
     queryFn: () =>
       unwrap(api.GET("/api/datasets/{dataset_id}", { params: { path: { dataset_id: id } } })),
   });

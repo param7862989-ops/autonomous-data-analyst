@@ -16,7 +16,7 @@ from app.jsonsafe import JsonScalar
 
 ChartType = Literal["line", "bar", "grouped_bar", "stacked_bar", "histogram", "scatter", "heatmap"]
 
-MAX_SERIES = 12
+MAX_SERIES = 8  # the size of the categorical palette; colors are never generated
 MAX_POINTS = 5_000
 MAX_SCATTER_POINTS = 2_000
 
@@ -60,6 +60,9 @@ class HeatmapData(BaseModel):
 
 
 class ChartSpec(BaseModel):
+    # Fields with defaults are always present in responses; say so in the schema.
+    model_config = ConfigDict(json_schema_serialization_defaults_required=True)
+
     id: str
     chart_type: ChartType
     title: str

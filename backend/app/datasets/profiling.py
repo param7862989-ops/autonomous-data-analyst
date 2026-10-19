@@ -7,7 +7,7 @@ from typing import Any, Literal
 
 import numpy as np
 import pandas as pd
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from app.datasets.inference import ColumnNote, ColumnSchema, SemanticType
 
@@ -53,6 +53,9 @@ class TextStats(BaseModel):
 
 
 class ColumnProfile(BaseModel):
+    # Fields with defaults are always present in responses; say so in the schema.
+    model_config = ConfigDict(json_schema_serialization_defaults_required=True)
+
     name: str
     original_name: str
     semantic_type: SemanticType
@@ -69,6 +72,9 @@ class ColumnProfile(BaseModel):
 
 
 class DataQualityWarning(BaseModel):
+    # Fields with defaults are always present in responses; say so in the schema.
+    model_config = ConfigDict(json_schema_serialization_defaults_required=True)
+
     code: str
     severity: Literal["info", "warning"]
     message: str

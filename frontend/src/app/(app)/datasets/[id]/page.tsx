@@ -5,6 +5,10 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
 
+import {
+  DatasetConversations,
+  StartConversationButton,
+} from "@/components/analysis/dataset-conversations";
 import { DataPreview } from "@/components/datasets/data-preview";
 import { ProfileTable } from "@/components/datasets/profile-table";
 import { QualityWarnings } from "@/components/datasets/quality-warnings";
@@ -86,10 +90,13 @@ export default function DatasetPage() {
             {formatDateTime(data.created_at)}.
           </p>
         </div>
-        <Button variant="secondary" onClick={() => setConfirming(true)}>
-          <Trash2 size={15} aria-hidden="true" />
-          Delete
-        </Button>
+        <div className="flex flex-wrap items-start gap-2">
+          <StartConversationButton datasetId={data.id} />
+          <Button variant="secondary" onClick={() => setConfirming(true)}>
+            <Trash2 size={15} aria-hidden="true" />
+            Delete
+          </Button>
+        </div>
       </div>
 
       <dl className="mt-6 grid grid-cols-2 gap-x-8 gap-y-4 sm:grid-cols-4">
@@ -102,6 +109,10 @@ export default function DatasetPage() {
       </dl>
 
       <div className="mt-8">
+        <DatasetConversations datasetId={data.id} />
+      </div>
+
+      <div className="mt-10">
         <Tabs
           label="Dataset views"
           active={tab}
@@ -144,7 +155,8 @@ export default function DatasetPage() {
         }
       >
         <p>
-          {data.name} and its stored file will be permanently removed. This can&apos;t be undone.
+          {data.name}, its stored file and every conversation about it will be permanently
+          removed. This can&apos;t be undone.
         </p>
         {remove.isError ? (
           <p className="mt-2 text-danger">{remove.error.message}</p>

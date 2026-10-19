@@ -85,6 +85,9 @@ EventStatus = Literal["running", "completed", "failed"]
 class ActivityEvent(BaseModel):
     """A high-level, user-visible step. Labels describe operations that actually ran."""
 
+    # Fields with defaults are always present in responses; say so in the schema.
+    model_config = ConfigDict(json_schema_serialization_defaults_required=True)
+
     kind: Literal["step", "tool"]
     # Stable identity of the step within a run; a later event with the same key updates it
     # (e.g. "running" -> "completed").
@@ -96,6 +99,9 @@ class ActivityEvent(BaseModel):
 
 
 class StoredResult(BaseModel):
+    # Fields with defaults are always present in responses; say so in the schema.
+    model_config = ConfigDict(json_schema_serialization_defaults_required=True)
+
     id: str
     tool: str
     operation: str
@@ -107,6 +113,9 @@ class StoredResult(BaseModel):
 
 
 class GroundingReport(BaseModel):
+    # Fields with defaults are always present in responses; say so in the schema.
+    model_config = ConfigDict(json_schema_serialization_defaults_required=True)
+
     checked_numbers: int = 0
     unverified_numbers: list[str] = Field(default_factory=list)
     invalid_references: list[str] = Field(default_factory=list)
@@ -124,6 +133,9 @@ StopReason = Literal[
 
 class AgentOutcome(BaseModel):
     """Everything a run produced. Persisted as the analysis result."""
+
+    # Fields with defaults are always present in responses; say so in the schema.
+    model_config = ConfigDict(json_schema_serialization_defaults_required=True)
 
     status: Literal["completed", "failed", "cancelled"]
     stop_reason: StopReason

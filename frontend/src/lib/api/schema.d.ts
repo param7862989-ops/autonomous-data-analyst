@@ -350,22 +350,22 @@ export interface components {
          * @description Everything a run produced. Persisted as the analysis result.
          */
         AgentOutcome: {
-            answer?: components["schemas"]["FinalAnswer"] | null;
+            answer: components["schemas"]["FinalAnswer"] | null;
             /** Charts */
-            charts?: components["schemas"]["ChartSpec"][];
+            charts: components["schemas"]["ChartSpec"][];
             /** Error Code */
-            error_code?: string | null;
+            error_code: string | null;
             /** Error Message */
-            error_message?: string | null;
-            grounding?: components["schemas"]["GroundingReport"] | null;
+            error_message: string | null;
+            grounding: components["schemas"]["GroundingReport"] | null;
             /**
              * Iterations
              * @default 0
              */
             iterations: number;
-            plan?: components["schemas"]["AnalysisPlan"] | null;
+            plan: components["schemas"]["AnalysisPlan"] | null;
             /** Results */
-            results?: components["schemas"]["StoredResult"][];
+            results: components["schemas"]["StoredResult"][];
             /**
              * Status
              * @enum {string}
@@ -382,7 +382,7 @@ export interface components {
              */
             tool_calls: number;
             /** Usage */
-            usage?: {
+            usage: {
                 [key: string]: unknown;
             };
         };
@@ -443,17 +443,17 @@ export interface components {
              * @enum {string}
              */
             chart_type: "line" | "bar" | "grouped_bar" | "stacked_bar" | "histogram" | "scatter" | "heatmap";
-            heatmap?: components["schemas"]["HeatmapData"] | null;
+            heatmap: components["schemas"]["HeatmapData"] | null;
             /** Id */
             id: string;
             /** Notes */
-            notes?: string[];
+            notes: string[];
             /** Source Result Id */
             source_result_id: string;
             /** Title */
             title: string;
             /** Traces */
-            traces?: components["schemas"]["ChartTrace"][];
+            traces: components["schemas"]["ChartTrace"][];
             /** X Label */
             x_label: string;
             /** Y Label */
@@ -484,11 +484,11 @@ export interface components {
         };
         /** ColumnProfile */
         ColumnProfile: {
-            datetime?: components["schemas"]["DatetimeStats"] | null;
+            datetime: components["schemas"]["DatetimeStats"] | null;
             /** Dtype */
             dtype: string;
             /** Histogram */
-            histogram?: components["schemas"]["HistogramBin"][] | null;
+            histogram: components["schemas"]["HistogramBin"][] | null;
             /** Missing Count */
             missing_count: number;
             /** Missing Share */
@@ -497,7 +497,7 @@ export interface components {
             name: string;
             /** Non Null Count */
             non_null_count: number;
-            numeric?: components["schemas"]["NumericStats"] | null;
+            numeric: components["schemas"]["NumericStats"] | null;
             /** Original Name */
             original_name: string;
             /**
@@ -505,9 +505,9 @@ export interface components {
              * @enum {string}
              */
             semantic_type: "numeric" | "datetime" | "boolean" | "categorical" | "text";
-            text?: components["schemas"]["TextStats"] | null;
+            text: components["schemas"]["TextStats"] | null;
             /** Top Values */
-            top_values?: components["schemas"]["ValueCount"][] | null;
+            top_values: components["schemas"]["ValueCount"][] | null;
             /** Unique Count */
             unique_count: number;
         };
@@ -602,7 +602,7 @@ export interface components {
             /** Code */
             code: string;
             /** Column */
-            column?: string | null;
+            column: string | null;
             /** Message */
             message: string;
             /**
@@ -795,11 +795,11 @@ export interface components {
              */
             checked_numbers: number;
             /** Invalid References */
-            invalid_references?: string[];
+            invalid_references: string[];
             /** Unsupported Facts */
-            unsupported_facts?: string[];
+            unsupported_facts: string[];
             /** Unverified Numbers */
-            unverified_numbers?: string[];
+            unverified_numbers: string[];
         };
         /** HealthResponse */
         HealthResponse: {
@@ -1060,13 +1060,13 @@ export interface components {
             /** Id */
             id: string;
             /** Notes */
-            notes?: string[];
+            notes: string[];
             /** Operation */
             operation: string;
             /** Sql */
-            sql?: string | null;
+            sql: string | null;
             /** Summary */
-            summary?: {
+            summary: {
                 [key: string]: boolean | number | string | null;
             };
             table: components["schemas"]["TableResult"];
