@@ -38,7 +38,7 @@ authorization later is a common source of data leaks).
 | 14 | Evaluation | Implemented — checkpoint pending | `4942053`, `0f399c0` |
 | 15 | End-to-end tests | Implemented — checkpoint pending | `3c98238` |
 | 16 | Containers and deployment | Implemented — checkpoint pending (not deployed) | `577b819` |
-| 17 | Security review and documentation | Implemented — checkpoint pending | see `git log` |
+| 17 | Security review and documentation | Implemented — checkpoint pending | `b990155` to `14c4642` (9 commits) |
 
 ---
 
