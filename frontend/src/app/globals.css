@@ -1,0 +1,65 @@
+@import "tailwindcss";
+
+/*
+ * Design tokens.
+ * Paper and ink carry the interface; the highlighter colour is reserved for figures that are
+ * backed by a computed result, and nothing else.
+ */
+@theme {
+  --color-paper: #f4f6f8;
+  --color-surface: #ffffff;
+  --color-ink: #15233f;
+  --color-slate: #5a6a80;
+  --color-rule: #d6dde5;
+  --color-rule-strong: #b8c3cf;
+  --color-primary: #1f3a93;
+  --color-primary-hover: #182e75;
+  --color-primary-soft: #e8edf9;
+  --color-highlight: #ffe16a;
+  --color-danger: #b42318;
+  --color-danger-soft: #fef3f2;
+  --color-success: #18794e;
+  --color-success-soft: #ecfdf3;
+  --color-warning: #93370d;
+  --color-warning-soft: #fffaeb;
+
+  --font-sans: var(--font-plex-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-source-serif), Georgia, "Times New Roman", serif;
+
+  --radius-control: 4px;
+  --radius-panel: 6px;
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@utility tabular {
+  font-variant-numeric: tabular-nums;
+}
