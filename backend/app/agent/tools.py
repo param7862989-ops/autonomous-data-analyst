@@ -268,6 +268,7 @@ class ToolExecutor:
             table=outcome.table,
             summary=outcome.summary,
             notes=outcome.notes,
+            arguments=operation.model_dump(mode="json"),
         )
         return self._store(call, result, _analysis_label(outcome.operation, outcome.description))
 
@@ -281,6 +282,7 @@ class ToolExecutor:
             description=f"SQL query: {args.purpose.strip()[:120] or 'custom query'}",
             table=table,
             sql=sql,
+            arguments={"sql": sql, "purpose": args.purpose},
         )
         execution = self._store(call, result, "Running a validated SQL query")
         execution.event.detail = f"{sql[:160]}{'…' if len(sql) > 160 else ''}"

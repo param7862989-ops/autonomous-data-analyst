@@ -7,13 +7,11 @@ records that do not exist.
 from __future__ import annotations
 
 import uuid
-from collections.abc import Mapping
 
 from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
 from app.agent.context import PriorTurn
-from app.agent.schemas import AgentOutcome
 from app.datasets.service import get_dataset
 from app.db.base import utcnow
 from app.db.models import AnalysisRun, Conversation, Dataset, User
@@ -201,29 +199,7 @@ def prior_turns(db: Session, run: AnalysisRun, limit: int = 5) -> list[PriorTurn
         .order_by(AnalysisRun.created_at.desc())
         .limit(limit)
     ).all()
-    turns = []
-    for previous in reversed(earlier):
-        summary, findings, results = None, [], []
-        if previous.outcome:
-            outcome = AgentOutcome.model_validate(previous.outcome)
-            if outcome.answer is not None:
-                summary = outcome.answer.summary
-                findings = [f"{f.statement} ({f.kind})" for f in outcome.answer.findings]
-            results = [_describe_result(r.description, r.summary) for r in outcome.results]
-        turns.append(
-            PriorTurn(
-                question=previous.question,
-                status=previous.status,
-                summary=summary,
-                findings=findings,
-                results=results,
-            )
-        )
-    return turns
-
-
-def _describe_result(description: str, summary: Mapping[str, object]) -> str:
-    if not summary:
-        return description
-    parts = ", ".join(f"{k}={v}" for k, v in list(summary.items())[:6])
-    return f"{description} [{parts}]"
+    return [
+        PriorTurn.from_outcome(previous.question, previous.status, previous.outcome)
+        for previous in reversed(earlier)
+    ]

@@ -10,6 +10,7 @@ import json
 from dataclasses import dataclass, field
 from typing import Any
 
+from app.agent.schemas import AgentOutcome
 from app.analytics.operations import ColumnSpec, DatasetSchema
 
 _MAX_VALUE_CHARS = 40
@@ -127,6 +128,22 @@ class PriorTurn:
     summary: str | None = None
     findings: list[str] = field(default_factory=list)
     results: list[str] = field(default_factory=list)
+
+    @classmethod
+    def from_outcome(cls, question: str, status: str, outcome: Any | None) -> PriorTurn:
+        """Summarise an AgentOutcome (or its JSON form) for the next turn's context."""
+        if outcome is None:
+            return cls(question=question, status=status)
+        parsed = AgentOutcome.model_validate(outcome)
+        summary, findings = None, []
+        if parsed.answer is not None:
+            summary = parsed.answer.summary
+            findings = [f"{f.statement} ({f.kind})" for f in parsed.answer.findings]
+        results = []
+        for result in parsed.results:
+            facts = ", ".join(f"{k}={v}" for k, v in list(result.summary.items())[:6])
+            results.append(f"{result.description} [{facts}]" if facts else result.description)
+        return cls(question, status, summary, findings, results)
 
 
 def render_history(turns: list[PriorTurn]) -> str:

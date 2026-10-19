@@ -110,6 +110,8 @@ class StoredResult(BaseModel):
     summary: dict[str, JsonScalar] = Field(default_factory=dict)
     notes: list[str] = Field(default_factory=list)
     sql: str | None = None
+    # The validated tool input that produced this result (how it was computed).
+    arguments: dict[str, Any] | None = None
 
 
 class GroundingReport(BaseModel):
