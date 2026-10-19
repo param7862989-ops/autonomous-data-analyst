@@ -5,9 +5,12 @@ from __future__ import annotations
 import io
 import zipfile
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from openpyxl import Workbook
+
+if TYPE_CHECKING:
+    from app.analytics.operations import DatasetSchema
 
 SAMPLE_SALES = Path(__file__).resolve().parents[2] / "data" / "samples" / "sales.csv"
 
@@ -35,3 +38,19 @@ def add_zip_entry(data: bytes, name: str, content: bytes) -> bytes:
     with zipfile.ZipFile(buffer, "a") as archive:
         archive.writestr(name, content)
     return buffer.getvalue()
+
+
+def load_dataset(csv: bytes, directory: Path) -> tuple[Path, DatasetSchema]:
+    """Run the real ingestion pipeline and write the result where the engine can load it."""
+    from app.analytics.operations import ColumnSpec, DatasetSchema
+    from app.datasets.inference import infer_table
+    from app.datasets.ingest import IngestLimits, read_csv
+
+    raw = read_csv(csv, IngestLimits(1_000_000, 100, 50_000_000, 1))
+    typed = infer_table(raw.headers, raw.frame)
+    path = directory / "dataset.parquet"
+    typed.frame.to_parquet(path, index=False)
+    schema = DatasetSchema(
+        [ColumnSpec(c.name, c.semantic_type, c.original_name) for c in typed.columns]
+    )
+    return path, schema

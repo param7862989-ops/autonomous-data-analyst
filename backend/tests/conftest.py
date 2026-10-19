@@ -19,9 +19,12 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from sqlalchemy import Engine, create_engine, text
 
+from app.analytics.engine import AnalyticsEngine, EngineLimits
+from app.analytics.operations import DatasetSchema
 from app.config import Settings
 from app.db.base import Base
 from app.main import create_app
+from tests.factories import SAMPLE_SALES, load_dataset
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 TEST_DATABASE_URL = os.environ.get("TEST_DATABASE_URL")
@@ -123,3 +126,20 @@ def register(
     assert response.status_code == 201, response.text
     body: dict[str, object] = response.json()
     return body
+
+
+@pytest.fixture(scope="session")
+def sales_dataset(tmp_path_factory: pytest.TempPathFactory) -> tuple[Path, DatasetSchema]:
+    return load_dataset(SAMPLE_SALES.read_bytes(), tmp_path_factory.mktemp("sales"))
+
+
+@pytest.fixture
+def sales_engine(sales_dataset: tuple[Path, DatasetSchema]) -> Iterator[AnalyticsEngine]:
+    path, _ = sales_dataset
+    with AnalyticsEngine(path, EngineLimits(query_timeout_seconds=10, max_result_rows=1000)) as e:
+        yield e
+
+
+@pytest.fixture
+def sales_schema(sales_dataset: tuple[Path, DatasetSchema]) -> DatasetSchema:
+    return sales_dataset[1]

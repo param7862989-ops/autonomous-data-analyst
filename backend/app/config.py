@@ -70,6 +70,12 @@ class Settings(BaseSettings):
     # Parsing is memory-heavy; bound how many uploads are processed at once per process.
     max_concurrent_ingestions: int = Field(default=2, ge=1)
 
+    # --- Analytical engine (DuckDB sandbox) ----------------------------------------------
+    query_timeout_seconds: float = Field(default=10.0, gt=0, le=120)
+    max_result_rows: int = Field(default=1_000, ge=1, le=50_000)
+    analytics_memory_limit: str = Field(default="512MB", pattern=r"^\d+(KB|MB|GB)$")
+    analytics_threads: int = Field(default=2, ge=1, le=16)
+
     @field_validator("allowed_origins", mode="before")
     @classmethod
     def _split_origins(cls, value: object) -> object:

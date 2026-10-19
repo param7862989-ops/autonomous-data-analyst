@@ -7,6 +7,7 @@ dependencies = [
     "alembic>=1.14",
     "argon2-cffi>=23.1",
     "defusedxml>=0.7.1",
+    "duckdb>=1.1",
     "email-validator>=2.2",
     "fastapi>=0.115",
     "numpy>=2.0",
@@ -18,6 +19,7 @@ dependencies = [
     "pydantic-settings>=2.6",
     "python-multipart>=0.0.18",
     "sqlalchemy>=2.0.36",
+    "sqlglot>=26",
     "uvicorn[standard]>=0.32",
 ]
 
@@ -36,7 +38,12 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["S105", "S106", "S107", "S108", "S311"]
+"tests/**" = ["S105", "S106", "S107", "S108", "S311", "S608"]
+# These modules build SQL from schema-validated, quoted identifiers, fixed literals and
+# validated integers only; every user/model-supplied value is a bound parameter. See
+# docs/SECURITY.md and tests/test_operations.py / tests/test_sql_guard.py.
+"app/analytics/engine.py" = ["S608"]
+"app/analytics/operations.py" = ["S608"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
