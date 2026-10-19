@@ -72,6 +72,62 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/datasets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List your datasets */
+        get: operations["list_datasets_api_datasets_get"];
+        put?: never;
+        /**
+         * Upload a CSV or XLSX file
+         * @description Validates, normalizes and profiles the file. For a workbook with several sheets, `sheet_name` is required; without it the response is 422 `sheet_required` with the sheet names in `details.sheets`.
+         */
+        post: operations["upload_dataset_api_datasets_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/datasets/{dataset_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Dataset details and profile */
+        get: operations["get_dataset_api_datasets__dataset_id__get"];
+        put?: never;
+        post?: never;
+        /** Delete a dataset */
+        delete: operations["delete_dataset_api_datasets__dataset_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/datasets/{dataset_id}/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A page of rows */
+        get: operations["preview_dataset_api_datasets__dataset_id__preview_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/health": {
         parameters: {
             query?: never;
@@ -116,6 +172,186 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** Body_upload_dataset_api_datasets_post */
+        Body_upload_dataset_api_datasets_post: {
+            /**
+             * File
+             * @description A .csv or .xlsx file
+             */
+            file: string;
+            /** Name */
+            name?: string | null;
+            /** Sheet Name */
+            sheet_name?: string | null;
+        };
+        /** ColumnInfo */
+        ColumnInfo: {
+            /** Dtype */
+            dtype: string;
+            /** Name */
+            name: string;
+            /** Original Name */
+            original_name: string;
+            /**
+             * Semantic Type
+             * @enum {string}
+             */
+            semantic_type: "numeric" | "datetime" | "boolean" | "categorical" | "text";
+        };
+        /** ColumnProfile */
+        ColumnProfile: {
+            datetime?: components["schemas"]["DatetimeStats"] | null;
+            /** Dtype */
+            dtype: string;
+            /** Histogram */
+            histogram?: components["schemas"]["HistogramBin"][] | null;
+            /** Missing Count */
+            missing_count: number;
+            /** Missing Share */
+            missing_share: number;
+            /** Name */
+            name: string;
+            /** Non Null Count */
+            non_null_count: number;
+            numeric?: components["schemas"]["NumericStats"] | null;
+            /** Original Name */
+            original_name: string;
+            /**
+             * Semantic Type
+             * @enum {string}
+             */
+            semantic_type: "numeric" | "datetime" | "boolean" | "categorical" | "text";
+            text?: components["schemas"]["TextStats"] | null;
+            /** Top Values */
+            top_values?: components["schemas"]["ValueCount"][] | null;
+            /** Unique Count */
+            unique_count: number;
+        };
+        /** DataQualityWarning */
+        DataQualityWarning: {
+            /** Code */
+            code: string;
+            /** Column */
+            column?: string | null;
+            /** Message */
+            message: string;
+            /**
+             * Severity
+             * @enum {string}
+             */
+            severity: "info" | "warning";
+        };
+        /** DatasetDetail */
+        DatasetDetail: {
+            /** Column Count */
+            column_count: number;
+            /** Columns */
+            columns: components["schemas"]["ColumnInfo"][];
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * File Format
+             * @enum {string}
+             */
+            file_format: "csv" | "xlsx";
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /** Original Filename */
+            original_filename: string;
+            profile: components["schemas"]["DatasetProfile"];
+            /** Row Count */
+            row_count: number;
+            /** Sheet Name */
+            sheet_name: string | null;
+            /** Upload Size Bytes */
+            upload_size_bytes: number;
+        };
+        /** DatasetList */
+        DatasetList: {
+            /** Items */
+            items: components["schemas"]["DatasetSummary"][];
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+            /** Total */
+            total: number;
+        };
+        /** DatasetPreview */
+        DatasetPreview: {
+            /** Columns */
+            columns: string[];
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+            /** Rows */
+            rows: (boolean | number | string | null)[][];
+            /** Total Rows */
+            total_rows: number;
+        };
+        /** DatasetProfile */
+        DatasetProfile: {
+            /** Column Count */
+            column_count: number;
+            /** Columns */
+            columns: components["schemas"]["ColumnProfile"][];
+            /** Duplicate Row Count */
+            duplicate_row_count: number;
+            /** Missing Cell Count */
+            missing_cell_count: number;
+            /** Row Count */
+            row_count: number;
+            /** Warnings */
+            warnings: components["schemas"]["DataQualityWarning"][];
+        };
+        /** DatasetSummary */
+        DatasetSummary: {
+            /** Column Count */
+            column_count: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * File Format
+             * @enum {string}
+             */
+            file_format: "csv" | "xlsx";
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /** Original Filename */
+            original_filename: string;
+            /** Row Count */
+            row_count: number;
+            /** Sheet Name */
+            sheet_name: string | null;
+            /** Upload Size Bytes */
+            upload_size_bytes: number;
+        };
+        /** DatetimeStats */
+        DatetimeStats: {
+            /** Max */
+            max: string | null;
+            /** Min */
+            min: string | null;
+            /** Span Days */
+            span_days: number | null;
+        };
         /** ErrorDetail */
         ErrorDetail: {
             /** Code */
@@ -142,6 +378,15 @@ export interface components {
              */
             status: "ok";
         };
+        /** HistogramBin */
+        HistogramBin: {
+            /** Count */
+            count: number;
+            /** End */
+            end: number;
+            /** Start */
+            start: number;
+        };
         /** LoginRequest */
         LoginRequest: {
             /**
@@ -151,6 +396,29 @@ export interface components {
             email: string;
             /** Password */
             password: string;
+        };
+        /** NumericStats */
+        NumericStats: {
+            /** Max */
+            max: number | null;
+            /** Mean */
+            mean: number | null;
+            /** Median */
+            median: number | null;
+            /** Min */
+            min: number | null;
+            /** Negatives */
+            negatives: number;
+            /** Q1 */
+            q1: number | null;
+            /** Q3 */
+            q3: number | null;
+            /** Std */
+            std: number | null;
+            /** Sum */
+            sum: number | null;
+            /** Zeros */
+            zeros: number;
         };
         /** ReadinessCheck */
         ReadinessCheck: {
@@ -179,6 +447,15 @@ export interface components {
             /** Password */
             password: string;
         };
+        /** TextStats */
+        TextStats: {
+            /** Max Length */
+            max_length: number;
+            /** Mean Length */
+            mean_length: number;
+            /** Min Length */
+            min_length: number;
+        };
         /** UserResponse */
         UserResponse: {
             /**
@@ -193,6 +470,13 @@ export interface components {
              * Format: uuid
              */
             id: string;
+        };
+        /** ValueCount */
+        ValueCount: {
+            /** Count */
+            count: number;
+            /** Value */
+            value: string;
         };
     };
     responses: never;
@@ -366,6 +650,255 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UserResponse"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Client error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Server error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    list_datasets_api_datasets_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DatasetList"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Client error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Server error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    upload_dataset_api_datasets_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_upload_dataset_api_datasets_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DatasetDetail"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Client error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Server error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_dataset_api_datasets__dataset_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dataset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DatasetDetail"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Client error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Server error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    delete_dataset_api_datasets__dataset_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dataset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Client error */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Server error */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    preview_dataset_api_datasets__dataset_id__preview_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                dataset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DatasetPreview"];
                 };
             };
             /** @description Validation error */

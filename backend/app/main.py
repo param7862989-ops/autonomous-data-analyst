@@ -2,16 +2,19 @@
 
 from __future__ import annotations
 
+import threading
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import auth, health
+from app.api.routes import auth, datasets, health
 from app.auth.csrf import CSRFMiddleware
 from app.auth.rate_limit import RateLimiter
+from app.body_limit import BodySizeLimitMiddleware
 from app.config import Settings, get_settings
+from app.datasets.storage import DatasetStorage
 from app.db.session import create_db_engine, create_session_factory
 from app.errors import ERROR_RESPONSES, register_error_handlers
 from app.logging_config import configure_logging
@@ -53,12 +56,23 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.engine = engine
     app.state.session_factory = create_session_factory(engine)
     app.state.rate_limiter = RateLimiter()
+    app.state.storage = DatasetStorage(settings.storage_dir)
+    app.state.ingestion_slots = threading.BoundedSemaphore(settings.max_concurrent_ingestions)
     app.dependency_overrides[get_settings] = lambda: settings
 
     register_error_handlers(app)
 
     # Middleware order: the last one added runs first (outermost).
-    # RequestContext -> CORS -> CSRF -> routes.
+    # RequestContext -> CORS -> CSRF -> BodySizeLimit -> routes.
+    upload_path = f"{API_PREFIX}/datasets"
+    upload_limit = settings.max_upload_bytes + 64 * 1024  # file + multipart overhead
+
+    def body_limit_for(method: str, path: str) -> int:
+        if method == "POST" and path == upload_path:
+            return upload_limit
+        return settings.max_request_body_bytes
+
+    app.add_middleware(BodySizeLimitMiddleware, limit_for=body_limit_for)
     app.add_middleware(
         CSRFMiddleware, allowed_origins=settings.allowed_origins, path_prefix=API_PREFIX
     )
@@ -78,5 +92,6 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     api = APIRouter(prefix=API_PREFIX, responses=ERROR_RESPONSES)
     api.include_router(health.router)
     api.include_router(auth.router)
+    api.include_router(datasets.router)
     app.include_router(api)
     return app

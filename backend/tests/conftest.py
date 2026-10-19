@@ -88,6 +88,11 @@ def settings(tmp_path: Path) -> Settings:
 
 
 @pytest.fixture
+def settings_storage(settings: Settings) -> Path:
+    return settings.storage_dir
+
+
+@pytest.fixture
 def app(settings: Settings) -> FastAPI:
     return create_app(settings)
 

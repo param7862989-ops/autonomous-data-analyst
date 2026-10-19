@@ -56,6 +56,20 @@ class Settings(BaseSettings):
     # --- Storage -------------------------------------------------------------------------
     storage_dir: Path = Path("storage")
 
+    # --- Requests and uploads ------------------------------------------------------------
+    # Hard cap on any non-upload request body (JSON).
+    max_request_body_bytes: int = Field(default=1024 * 1024, ge=1024)
+    max_upload_bytes: int = Field(default=25 * 1024 * 1024, ge=1024)
+    max_dataset_rows: int = Field(default=500_000, ge=1)
+    max_dataset_columns: int = Field(default=200, ge=1)
+    max_dataset_cells: int = Field(default=10_000_000, ge=1)
+    # Zip-bomb guard for .xlsx: total uncompressed size of the archive.
+    max_xlsx_uncompressed_bytes: int = Field(default=250 * 1024 * 1024, ge=1024)
+    max_datasets_per_user: int = Field(default=100, ge=1)
+    uploads_per_user_per_hour: int = Field(default=30, ge=1)
+    # Parsing is memory-heavy; bound how many uploads are processed at once per process.
+    max_concurrent_ingestions: int = Field(default=2, ge=1)
+
     @field_validator("allowed_origins", mode="before")
     @classmethod
     def _split_origins(cls, value: object) -> object:
