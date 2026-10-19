@@ -20,6 +20,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     false,
+    text,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -115,6 +116,10 @@ class Conversation(UUIDPrimaryKey, Timestamps, Base):
 
 
 RUN_STATUSES = ("queued", "running", "completed", "failed", "cancelled")
+ACTIVE_RUN_STATUSES = ("queued", "running")
+# At most one active run per conversation, enforced by the database so that two simultaneous
+# requests cannot both start one (the service checks first; this decides any race).
+ONE_ACTIVE_RUN_INDEX = "uq_analysis_runs_conversation_id_active"
 
 
 class AnalysisRun(UUIDPrimaryKey, Timestamps, Base):
@@ -125,6 +130,12 @@ class AnalysisRun(UUIDPrimaryKey, Timestamps, Base):
         Index("ix_analysis_runs_user_id_created_at", "user_id", "created_at"),
         Index("ix_analysis_runs_conversation_id_created_at", "conversation_id", "created_at"),
         Index("ix_analysis_runs_status", "status"),
+        Index(
+            ONE_ACTIVE_RUN_INDEX,
+            "conversation_id",
+            unique=True,
+            postgresql_where=text(f"status IN {ACTIVE_RUN_STATUSES}"),
+        ),
         CheckConstraint(f"status IN {RUN_STATUSES}", name="status"),
     )
 

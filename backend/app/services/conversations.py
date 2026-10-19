@@ -9,15 +9,23 @@ from __future__ import annotations
 import uuid
 
 from sqlalchemy import func, select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.agent.context import PriorTurn
 from app.datasets.service import get_dataset
 from app.db.base import utcnow
-from app.db.models import AnalysisRun, Conversation, Dataset, User
+from app.db.models import (
+    ACTIVE_RUN_STATUSES,
+    ONE_ACTIVE_RUN_INDEX,
+    AnalysisRun,
+    Conversation,
+    Dataset,
+    User,
+)
 from app.errors import ConflictError, NotFoundError
 
-ACTIVE_STATUSES = ("queued", "running")
+ACTIVE_STATUSES = ACTIVE_RUN_STATUSES
 TERMINAL_STATUSES = ("completed", "failed", "cancelled")
 TITLE_LENGTH = 80
 
@@ -112,11 +120,7 @@ def start_run(db: Session, *, user: User, conversation_id: uuid.UUID, question: 
         )
     )
     if active:
-        raise ConflictError(
-            "An analysis is already running in this conversation. Wait for it to finish or "
-            "cancel it.",
-            code="analysis_in_progress",
-        )
+        raise _analysis_in_progress()
     is_first = not db.scalar(
         select(func.count())
         .select_from(AnalysisRun)
@@ -133,8 +137,23 @@ def start_run(db: Session, *, user: User, conversation_id: uuid.UUID, question: 
     if is_first and conversation.title.startswith("Analysis of "):
         conversation.title = _title_from(question)
     conversation.updated_at = utcnow()
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError as exc:
+        # Another request started a run between the check above and this insert.
+        db.rollback()
+        constraint = getattr(getattr(exc.orig, "diag", None), "constraint_name", None)
+        if constraint != ONE_ACTIVE_RUN_INDEX:
+            raise
+        raise _analysis_in_progress() from exc
     return run
+
+
+def _analysis_in_progress() -> ConflictError:
+    return ConflictError(
+        "An analysis is already running in this conversation. Wait for it to finish or cancel it.",
+        code="analysis_in_progress",
+    )
 
 
 def get_run(db: Session, *, user: User, run_id: uuid.UUID) -> AnalysisRun:

@@ -16,13 +16,15 @@ import pandas as pd
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from sqlalchemy import Engine, select, update
+from sqlalchemy import Engine, event, select, update
 from sqlalchemy.orm import Session
 
 from app.agent.llm.base import LLMTimeoutError
 from app.agent.llm.fake import FakeProvider
-from app.db.models import AnalysisEvent, AnalysisRun, Conversation
+from app.db.models import AnalysisEvent, AnalysisRun, Conversation, User
+from app.errors import ConflictError
 from app.main import create_app
+from app.services.conversations import start_run
 from tests.conftest import CSRF_HEADERS, make_settings, new_client, register
 from tests.factories import SAMPLE_SALES
 from tests.scripted import QUESTION, HoldingExecutor, InlineExecutor, sales_provider
@@ -211,6 +213,46 @@ def test_one_active_analysis_per_conversation(client: TestClient, db_engine: Eng
     )
     assert response.status_code == 409
     assert response.json()["error"]["code"] == "analysis_in_progress"
+
+
+def test_simultaneous_requests_cannot_start_two_analyses(
+    client: TestClient, db_engine: Engine
+) -> None:
+    # Two requests arriving together both pass start_run's check; the partial unique index
+    # decides. Simulate the other request committing between the check and this insert.
+    register(client)
+    conversation_id = uuid.UUID(new_conversation(client, upload_sales(client)))
+    with Session(db_engine) as db:
+        conversation = db.get(Conversation, conversation_id)
+        assert conversation is not None
+        user = db.get(User, conversation.user_id)
+        assert user is not None
+
+        def other_request_commits_first(session: Session) -> None:
+            with Session(db_engine) as other:
+                other.add(
+                    AnalysisRun(
+                        user_id=user.id,
+                        conversation_id=conversation_id,
+                        dataset_id=conversation.dataset_id,
+                        question="first",
+                        status="queued",
+                    )
+                )
+                other.commit()
+
+        event.listen(db, "before_commit", other_request_commits_first, once=True)
+        with pytest.raises(ConflictError) as excinfo:
+            start_run(db, user=user, conversation_id=conversation_id, question="second")
+        assert excinfo.value.code == "analysis_in_progress"
+
+        # The index only covers active runs: once the first one finishes, a new one starts.
+        db.execute(update(AnalysisRun).values(status="completed"))
+        db.commit()
+        assert start_run(db, user=user, conversation_id=conversation_id, question="third")
+    with Session(db_engine) as db:
+        questions = db.scalars(select(AnalysisRun.question).order_by(AnalysisRun.created_at)).all()
+    assert questions == ["first", "third"]
 
 
 def test_cancel_queued_analysis(db_engine: Engine, tmp_path: Path) -> None:
