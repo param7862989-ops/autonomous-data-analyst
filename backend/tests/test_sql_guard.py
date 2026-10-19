@@ -26,6 +26,10 @@ ALLOWED = [
     "SELECT * FROM data;",
     "SELECT 'DROP TABLE data' AS harmless_text FROM data",
     "SELECT COUNT(*) FILTER (WHERE region = 'West') FROM data",
+    "WITH a AS (SELECT * FROM data), b AS (SELECT * FROM a) SELECT * FROM b JOIN a ON true",
+    "WITH a AS (SELECT * FROM data) SELECT * FROM (SELECT * FROM a) s",
+    "SELECT * FROM data WHERE EXISTS (SELECT 1 FROM data d2 WHERE d2.region = data.region)",
+    "SELECT product || ' (' || region || ')' AS label FROM data",
 ]
 
 REJECTED = {
@@ -74,6 +78,18 @@ REJECTED = {
     "pivot": "PIVOT data ON region USING SUM(revenue)",
     "unparseable": "SELECT FROM WHERE ((",
     "comment smuggling": "SELECT * FROM data /* ; */ ; DROP TABLE data",
+    "cte scope smuggling": "SELECT * FROM (WITH sqlite_master AS (SELECT 1) "
+    "SELECT * FROM sqlite_master) t, sqlite_master",
+    "cte scope smuggling duckdb_tables": "SELECT * FROM (WITH duckdb_tables AS (SELECT 1) "
+    "SELECT * FROM duckdb_tables) t, duckdb_tables",
+    "inner cte out of scope": "SELECT * FROM (WITH x AS (SELECT * FROM data) "
+    "SELECT * FROM x) t JOIN x ON true",
+    "replace amplification": "SELECT SUM(LENGTH(REPLACE(REPLACE(product, 'a', 'aaaaaaaaaa'), "
+    "'a', 'aaaaaaaaaa'))) FROM data",
+    "regexp_replace": "SELECT REGEXP_REPLACE(product, '', 'xx', 'g') FROM data",
+    "lpad": "SELECT LPAD(product, 1000000000, 'x') FROM data",
+    "repeat": "SELECT REPEAT(product, 1000000) FROM data",
+    "concat chain": "SELECT " + " || ".join(["product"] * 30) + " FROM data",
 }
 
 
