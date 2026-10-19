@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routes import health
 from app.config import Settings, get_settings
-from app.errors import register_error_handlers
+from app.errors import ERROR_RESPONSES, register_error_handlers
 from app.logging_config import configure_logging
 from app.middleware import RequestContextMiddleware
 
@@ -58,7 +58,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # gets a request id and security headers.
     app.add_middleware(RequestContextMiddleware, docs_paths=frozenset({DOCS_URL, OPENAPI_URL}))
 
-    api = APIRouter(prefix=API_PREFIX)
+    api = APIRouter(prefix=API_PREFIX, responses=ERROR_RESPONSES)
     api.include_router(health.router)
     app.include_router(api)
     return app

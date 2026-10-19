@@ -16,9 +16,31 @@ from typing import Any
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.request_context import get_request_id
+
+
+class ErrorDetail(BaseModel):
+    code: str
+    message: str
+    details: Any = None
+    request_id: str | None = None
+
+
+class ErrorResponse(BaseModel):
+    """The body of every non-2xx API response."""
+
+    error: ErrorDetail
+
+
+# Documented on every API route so generated clients know the error shape.
+ERROR_RESPONSES: dict[int | str, dict[str, Any]] = {
+    422: {"model": ErrorResponse, "description": "Validation error"},
+    "4XX": {"model": ErrorResponse, "description": "Client error"},
+    "5XX": {"model": ErrorResponse, "description": "Server error"},
+}
 
 
 class AppError(Exception):
