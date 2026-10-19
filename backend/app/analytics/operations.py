@@ -17,8 +17,8 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.analytics.engine import (
     TABLE_NAME,
-    AnalyticsEngine,
     AnalyticsError,
+    QueryEngine,
     ResultColumn,
     TableResult,
 )
@@ -303,7 +303,7 @@ class AggregateOp(BaseModel):
     descending: bool = True
     limit: int = Field(default=50, ge=1, le=500)
 
-    def run(self, engine: AnalyticsEngine, schema: DatasetSchema) -> OperationResult:
+    def run(self, engine: QueryEngine, schema: DatasetSchema) -> OperationResult:
         compiler = _Compiler(schema)
         groups = [quote(schema.get(g, role="group_by column").name) for g in self.group_by]
         names = [m.output_name for m in self.metrics]
@@ -354,7 +354,7 @@ class TimeSeriesOp(BaseModel):
     end: dt.date | None = Field(default=None, description="Inclusive last day.")
     filters: list[Filter] = Field(default_factory=list, max_length=10)
 
-    def run(self, engine: AnalyticsEngine, schema: DatasetSchema) -> OperationResult:
+    def run(self, engine: QueryEngine, schema: DatasetSchema) -> OperationResult:
         compiler = _Compiler(schema)
         date = quote(schema.get(self.date_column, allowed={"datetime"}, role="date column").name)
         clauses, params = compiler.filters(self.filters)
@@ -419,7 +419,7 @@ class PeriodComparisonOp(BaseModel):
     filters: list[Filter] = Field(default_factory=list, max_length=10)
     limit: int = Field(default=25, ge=1, le=200, description="Segments with the largest change.")
 
-    def run(self, engine: AnalyticsEngine, schema: DatasetSchema) -> OperationResult:
+    def run(self, engine: QueryEngine, schema: DatasetSchema) -> OperationResult:
         compiler = _Compiler(schema)
         date = quote(schema.get(self.date_column, allowed={"datetime"}, role="date column").name)
         value = "1" if self.metric.column is None else quote(schema.get(self.metric.column).name)
@@ -546,7 +546,7 @@ class DistributionOp(BaseModel):
     bins: int = Field(default=20, ge=2, le=50)
     filters: list[Filter] = Field(default_factory=list, max_length=10)
 
-    def run(self, engine: AnalyticsEngine, schema: DatasetSchema) -> OperationResult:
+    def run(self, engine: QueryEngine, schema: DatasetSchema) -> OperationResult:
         compiler = _Compiler(schema)
         col = quote(schema.get(self.column, allowed={"numeric"}, role="distribution column").name)
         clauses, params = compiler.filters(self.filters)
@@ -619,7 +619,7 @@ class CorrelationOp(BaseModel):
     method: Literal["pearson", "spearman"] = "pearson"
     filters: list[Filter] = Field(default_factory=list, max_length=10)
 
-    def run(self, engine: AnalyticsEngine, schema: DatasetSchema) -> OperationResult:
+    def run(self, engine: QueryEngine, schema: DatasetSchema) -> OperationResult:
         compiler = _Compiler(schema)
         if len(set(self.columns)) != len(self.columns):
             raise OperationError("Correlation columns must be distinct.")
@@ -693,7 +693,7 @@ class OutliersOp(BaseModel):
     filters: list[Filter] = Field(default_factory=list, max_length=10)
     limit: int = Field(default=20, ge=1, le=100)
 
-    def run(self, engine: AnalyticsEngine, schema: DatasetSchema) -> OperationResult:
+    def run(self, engine: QueryEngine, schema: DatasetSchema) -> OperationResult:
         compiler = _Compiler(schema)
         col = quote(schema.get(self.column, allowed={"numeric"}, role="outlier column").name)
         context = [quote(schema.get(c).name) for c in self.include_columns if c != self.column]
@@ -753,7 +753,7 @@ class MissingValuesOp(BaseModel):
     operation: Literal["missing_values"] = "missing_values"
     columns: list[str] = Field(default_factory=list, description="Defaults to all columns.")
 
-    def run(self, engine: AnalyticsEngine, schema: DatasetSchema) -> OperationResult:
+    def run(self, engine: QueryEngine, schema: DatasetSchema) -> OperationResult:
         names = self.columns or [c.name for c in schema.columns]
         cols = [schema.get(n).name for n in names]
         selects = ["COUNT(*)"] + [f"COUNT(*) - COUNT({quote(c)})" for c in cols]
@@ -793,7 +793,7 @@ class RowsOp(BaseModel):
     descending: bool = True
     limit: int = Field(default=20, ge=1, le=200)
 
-    def run(self, engine: AnalyticsEngine, schema: DatasetSchema) -> OperationResult:
+    def run(self, engine: QueryEngine, schema: DatasetSchema) -> OperationResult:
         compiler = _Compiler(schema)
         names = self.columns or [c.name for c in schema.columns]
         cols = [quote(schema.get(n).name) for n in names]
@@ -829,6 +829,6 @@ AnalysisOperation = Annotated[
 
 
 def run_operation(
-    operation: AnalysisOperation, engine: AnalyticsEngine, schema: DatasetSchema
+    operation: AnalysisOperation, engine: QueryEngine, schema: DatasetSchema
 ) -> OperationResult:
     return operation.run(engine, schema)

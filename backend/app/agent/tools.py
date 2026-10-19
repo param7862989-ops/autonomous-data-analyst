@@ -21,8 +21,8 @@ from app.agent.llm.base import ToolCall, ToolOutcome, ToolSpec
 from app.agent.schemas import ActivityEvent, StoredResult
 from app.analytics.charts import ChartRequest, ChartSpec, build_chart
 from app.analytics.engine import (
-    AnalyticsEngine,
     AnalyticsError,
+    QueryEngine,
     ResultColumn,
     TableResult,
 )
@@ -142,7 +142,7 @@ class ToolExecutor:
     def __init__(
         self,
         *,
-        engine: AnalyticsEngine,
+        engine: QueryEngine,
         context: DatasetContext,
         profile: dict[str, Any],
     ) -> None:

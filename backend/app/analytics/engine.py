@@ -20,7 +20,7 @@ import threading
 from dataclasses import dataclass
 from pathlib import Path
 from types import TracebackType
-from typing import Any
+from typing import Any, Protocol
 
 import duckdb
 from pydantic import BaseModel
@@ -31,6 +31,9 @@ from app.jsonsafe import JsonScalar, rows_to_json
 logger = logging.getLogger(__name__)
 
 TABLE_NAME = "data"
+# Text values in results are shortened to this many characters. Results are stored with the run
+# and shown to the model; full values stay in the dataset.
+MAX_CELL_CHARS = 1_000
 # Error text from the engine is shown to the model (to let it fix its query) and possibly the
 # user; anything that looks like a filesystem path is removed first.
 _PATH_PATTERN = re.compile(r"([A-Za-z]:)?[\\/][^\s'\"]*[\\/][^\s'\"]*")
@@ -43,6 +46,15 @@ class AnalyticsError(Exception):
         super().__init__(message)
         self.message = message
         self.code = code
+
+
+class ResourceLimitError(AnalyticsError):
+    def __init__(self) -> None:
+        super().__init__(
+            "The query needed more memory or time than allowed and was stopped. Simplify it "
+            "or aggregate first.",
+            code="query_resources",
+        )
 
 
 class QueryTimeoutError(AnalyticsError):
@@ -92,6 +104,20 @@ class TableResult(BaseModel):
     def column_values(self, name: str) -> list[JsonScalar]:
         index = self.column_index(name)
         return [row[index] for row in self.rows]
+
+
+class QueryEngine(Protocol):
+    """What operations and tools need: run trusted SQL against the dataset."""
+
+    def execute(self, sql: str, params: list[Any] | None = None) -> TableResult: ...
+
+    def count_rows(self) -> int: ...
+
+
+def _clip(value: Any) -> Any:
+    if isinstance(value, str) and len(value) > MAX_CELL_CHARS:
+        return value[: MAX_CELL_CHARS - 1] + "…"
+    return value
 
 
 def sanitize_engine_message(message: str) -> str:
@@ -152,6 +178,8 @@ class AnalyticsEngine:
                 raw_rows = cursor.fetchmany(self.limits.max_result_rows + 1)
             except duckdb.InterruptException as exc:
                 raise QueryTimeoutError(self.limits.query_timeout_seconds) from exc
+            except duckdb.OutOfMemoryException as exc:
+                raise ResourceLimitError() from exc
             except duckdb.Error as exc:
                 logger.info("Analytical query failed: %s", type(exc).__name__)
                 raise AnalyticsError(
@@ -163,7 +191,7 @@ class AnalyticsEngine:
         rows = raw_rows[: self.limits.max_result_rows]
         return TableResult(
             columns=[ResultColumn(name=str(d[0]), type=str(d[1])) for d in description],
-            rows=rows_to_json(rows),
+            rows=[[_clip(value) for value in row] for row in rows_to_json(rows)],
             row_count=len(rows),
             truncated=truncated,
         )

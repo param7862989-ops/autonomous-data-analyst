@@ -26,7 +26,8 @@ from app.agent.graph import AgentDeps, AgentLimits, AnalysisAgent
 from app.agent.llm.base import LLMError, LLMProvider
 from app.agent.schemas import ActivityEvent, AgentOutcome
 from app.agent.tools import ToolExecutor
-from app.analytics.engine import AnalyticsEngine, EngineLimits
+from app.analytics.engine import EngineLimits
+from app.analytics.isolation import IsolatedEngine
 from app.config import Settings
 from app.datasets.storage import DatasetStorage
 from app.db.base import utcnow
@@ -206,8 +207,10 @@ class AnalysisRunner:
             return
 
         settings = self._settings
-        with AnalyticsEngine(
-            self._storage.path_for(storage_key), EngineLimits.from_settings(settings)
+        with IsolatedEngine(
+            self._storage.path_for(storage_key),
+            EngineLimits.from_settings(settings),
+            address_space_bytes=settings.analytics_process_memory_bytes or None,
         ) as engine:
             agent = AnalysisAgent(
                 AgentDeps(

@@ -75,6 +75,8 @@ class Settings(BaseSettings):
     max_result_rows: int = Field(default=1_000, ge=1, le=50_000)
     analytics_memory_limit: str = Field(default="512MB", pattern=r"^\d+(KB|MB|GB)$")
     analytics_threads: int = Field(default=2, ge=1, le=16)
+    # Address-space cap of each analysis engine process (Linux). 0 disables it.
+    analytics_process_memory_bytes: int = Field(default=2 * 1024**3, ge=0)
 
     # --- LLM provider --------------------------------------------------------------------
     # Without an API key the app works for upload and profiling; analysis is disabled.

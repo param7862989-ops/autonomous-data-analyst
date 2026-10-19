@@ -35,6 +35,7 @@ from app.agent.llm.base import LLMProvider
 from app.agent.schemas import AgentOutcome, StoredResult
 from app.agent.tools import ToolExecutor
 from app.analytics.engine import AnalyticsEngine, EngineLimits
+from app.analytics.isolation import IsolatedEngine
 from app.analytics.operations import AnalysisOperation
 from app.datasets.inference import infer_table
 from app.datasets.ingest import IngestLimits, read_csv
@@ -238,7 +239,9 @@ def run_agent(
                 )
             provider = provider_factory()
             started = time.monotonic()
-            with AnalyticsEngine(data.parquet, EngineLimits()) as engine:
+            with IsolatedEngine(
+                data.parquet, EngineLimits(), address_space_bytes=2 * 1024**3
+            ) as engine:
                 agent = AnalysisAgent(
                     AgentDeps(
                         provider=provider,
