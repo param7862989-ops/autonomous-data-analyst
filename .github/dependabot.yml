@@ -18,6 +18,15 @@ updates:
     groups:
       frontend-minor-and-patch:
         update-types: [minor, patch]
+    ignore:
+      # openapi-typescript (peer typescript ^5.x) and typescript-eslint (<6.1.0) do not accept
+      # newer majors yet; `npm ci` fails with ERESOLVE (PR #1). Remove once both support them.
+      - dependency-name: typescript
+        update-types: [version-update:semver-major]
+      # Node type definitions follow the Node runtime (24 in CI and the Dockerfile); raise all
+      # three together, by hand.
+      - dependency-name: "@types/node"
+        update-types: [version-update:semver-major]
   - package-ecosystem: github-actions
     directory: /
     schedule:
