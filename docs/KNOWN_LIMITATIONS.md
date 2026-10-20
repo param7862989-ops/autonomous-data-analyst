@@ -16,9 +16,9 @@ says why, and what would change it.
 
 ## Architecture trade-offs
 
-- **Single process per backend container.** Analysis runs execute in an in-process thread pool,
-  the rate limiter keeps its counters in memory, and startup marks unfinished runs as
-  interrupted. Consequences: a restart fails in-flight analyses (users see "interrupted, ask
+- **Single process per backend container.** Analysis runs are orchestrated in an in-process
+  thread pool (each run's queries go to its own child process, see below), the rate limiter
+  keeps its counters in memory, and startup marks unfinished runs as interrupted. Consequences: a restart fails in-flight analyses (users see "interrupted, ask
   again"), rate limits are per process, and running several Uvicorn workers or replicas would
   break restart recovery. Scaling out needs a shared job queue and shared rate-limit store
   (e.g. Redis), which were deliberately not added for a single-node deployment.
@@ -58,8 +58,10 @@ says why, and what would change it.
 ## Security and accounts
 
 - **Content Security Policy allows inline scripts** (`'unsafe-inline'`), which Next.js needs
-  without a nonce-based setup. React escaping, no `dangerouslySetInnerHTML`, and Plotly's link
-  protocol sanitising are the XSS defences.
+  without a nonce-based setup. The XSS defences are React escaping, no
+  `dangerouslySetInnerHTML`, and entity-escaping of every data-derived chart label, legend name
+  and axis title before it reaches Plotly (which would otherwise render links and markup in
+  them).
 - **Accounts are basic.** No email verification, password reset, multi-factor authentication,
   account deletion endpoint or admin role. Set `ALLOW_REGISTRATION=false` for private
   deployments.

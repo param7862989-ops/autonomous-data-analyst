@@ -38,7 +38,8 @@ authorization later is a common source of data leaks).
 | 14 | Evaluation | Implemented — checkpoint pending | `4942053`, `0f399c0` |
 | 15 | End-to-end tests | Implemented — checkpoint pending | `3c98238` |
 | 16 | Containers and deployment | Implemented — checkpoint pending (not deployed) | `577b819` |
-| 17 | Security review and documentation | Implemented — checkpoint pending | `b990155` to `14c4642` (9 commits) |
+| 17 | Security review and documentation | Implemented — checkpoint pending | `b990155` to `5d088b4` (10 commits) |
+| 18 | Repository verification and release readiness | Implemented — checkpoint pending | 2026-10-20 commits (docs, Dependabot config) |
 
 ---
 
@@ -262,8 +263,29 @@ authorization later is a common source of data leaks).
   2. What is the weakest part of this system's security today, and what would you do next?
   3. Why does DuckDB's `memory_limit` not stop `REPEAT(text, 1000000)`, and what does?
 
+## Day 18 — Repository verification and release readiness
+
+- **Objective:** verify the repository against the reports, fix documentation drift, run the
+  full backend suite once, and review the open dependency updates.
+- **Learn:** semantic versioning and npm peer dependencies (Working, 30 min); reading a
+  lockfile diff (Working, 30 min).
+- **Verified:** local and remote `main` agree; the full backend suite in one run: 342 passed,
+  1 skipped (the Linux-only memory-cap test) against the dedicated test database.
+- **Fixed:** documentation drift (next migration id, out-of-date limitations, test counts);
+  evaluation reports are no longer committed by default.
+- **Dependency review:** the TypeScript 7 update fails `npm ci` because `openapi-typescript`
+  requires TypeScript 5 (reproduced locally); `@types/node` 26 is ahead of the Node 24 runtime;
+  ESLint 10 installs only by overriding three plugins' peer ranges. Majors of `typescript` and
+  `@types/node` are now ignored by Dependabot; ESLint 10 waits for plugin support. The React
+  19.3.1 patch passed all five CI jobs after Dependabot rebased it onto current `main`.
+- **Checkpoint questions:**
+  1. Why did a green CI run on a Dependabot PR not prove it was safe to merge?
+  2. What does `npm warn ERESOLVE overriding peer dependency` mean, and why is it a risk even
+     when lint passes?
+
 ## Outstanding (needs you)
 
 - An Anthropic API key, to run `python -m evals.run --mode agent` and record real results.
 - A server and domain, to deploy with the production overlay and run `scripts/smoke_test.sh`.
-- Your study and checkpoint answers for days 2–17.
+- Your study and checkpoint answers for days 2–18.
+- Merging Dependabot PR #6 (React 19.3.1; all CI jobs green) and closing PRs #1 and #4.

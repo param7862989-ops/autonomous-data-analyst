@@ -49,7 +49,7 @@ uv run uvicorn app.asgi:app --reload --port 8000
 Migrations: never change the schema by hand.
 
 ```bash
-uv run alembic revision --autogenerate --rev-id 0004 -m "describe change"   # then review it
+uv run alembic revision --autogenerate --rev-id 0005 -m "describe change"   # then review it
 uv run alembic downgrade -1
 ```
 

@@ -51,3 +51,6 @@ storage/
 
 # End-to-end test storage
 backend/.e2e-storage/
+
+# Agent-mode evaluation reports (commit one deliberately with `git add -f`)
+backend/evals/results/

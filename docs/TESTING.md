@@ -41,7 +41,7 @@ truncate every table after each test. Without `TEST_DATABASE_URL` they are skipp
 ## Frontend (`cd frontend`)
 
 ```bash
-npm test                 # Vitest, ~65 tests
+npm test                 # Vitest, 66 tests
 npm run lint && npm run typecheck
 ```
 
@@ -64,7 +64,10 @@ the production frontend build. The main test registers, uploads the sample, chec
 and rows, asks "Why did revenue decrease in Q3?", checks the grounded answer, highlighted
 figures, the rendered chart, the cited result table and the activity trail, asks a follow-up,
 reloads and finds both in History, signs out, and confirms a second user sees nothing and gets
-"not found" for the first user's dataset and conversation URLs.
+"not found" for the first user's dataset and conversation URLs. Two smaller tests check that
+signed-out visitors are redirected to sign in, and that pages from the production build send
+the expected security headers (CSP directives without `unsafe-eval`, `X-Frame-Options`,
+`X-Content-Type-Options`, `Referrer-Policy`, no `X-Powered-By`).
 
 ## Tests that need a real model
 
