@@ -3,9 +3,10 @@ import type { Config, Data, Layout } from "plotly.js";
 import type { ChartSpec } from "./api";
 
 /**
- * Categorical palette, light mode, in its validated order (adjacent-pair CVD and normal-vision
- * separation checked against our white chart surface). Colors are assigned to series in this
- * order and never cycled: the backend caps a chart at 8 series.
+ * Categorical palette in its validated order (adjacent-pair CVD and normal-vision separation
+ * checked against each mode's chart surface). Dark mode is the same eight hues re-stepped for
+ * the dark surface, validated as a set - not an automatic flip. Colors are assigned to series
+ * in this order and never cycled: the backend caps a chart at 8 series.
  */
 export const SERIES_COLORS = [
   "#2a78d6",
@@ -18,19 +19,70 @@ export const SERIES_COLORS = [
   "#e34948",
 ] as const;
 
-/** Diverging poles with a neutral midpoint, for signed values and correlations. */
-export const DIVERGING = { negative: "#e34948", neutral: "#f0efec", positive: "#2a78d6" } as const;
-const SEQUENTIAL = [
-  [0, "#cde2fb"],
-  [0.5, "#5598e7"],
-  [1, "#104281"],
+export const SERIES_COLORS_DARK = [
+  "#3987e5",
+  "#d95926",
+  "#199e70",
+  "#c98500",
+  "#d55181",
+  "#008300",
+  "#9085e9",
+  "#e66767",
 ] as const;
 
-const INK = "#15233f";
-const MUTED = "#5a6a80";
-const GRID = "#e6eaef";
-const AXIS = "#b8c3cf";
-const SURFACE = "#ffffff";
+/** Diverging poles with a neutral midpoint, for signed values and correlations. */
+export const DIVERGING = { negative: "#e34948", neutral: "#f0efec", positive: "#2a78d6" } as const;
+export const DIVERGING_DARK = {
+  negative: "#e66767",
+  neutral: "#383835",
+  positive: "#3987e5",
+} as const;
+
+export type ChartTheme = "light" | "dark";
+
+type Palette = {
+  series: readonly string[];
+  diverging: { negative: string; neutral: string; positive: string };
+  // One hue; the end nearest zero recedes toward the surface (light on light, dark on dark).
+  sequential: ReadonlyArray<readonly [number, string]>;
+  ink: string;
+  muted: string;
+  grid: string;
+  axis: string;
+  surface: string;
+};
+
+const PALETTES: Record<ChartTheme, Palette> = {
+  light: {
+    series: SERIES_COLORS,
+    diverging: DIVERGING,
+    sequential: [
+      [0, "#cde2fb"],
+      [0.5, "#5598e7"],
+      [1, "#104281"],
+    ],
+    ink: "#15233f",
+    muted: "#5a6a80",
+    grid: "#e6eaef",
+    axis: "#b8c3cf",
+    surface: "#ffffff",
+  },
+  dark: {
+    series: SERIES_COLORS_DARK,
+    diverging: DIVERGING_DARK,
+    sequential: [
+      [0, "#0d366b"],
+      [0.5, "#2a78d6"],
+      [1, "#b7d3f6"],
+    ],
+    ink: "#e7ecf3",
+    muted: "#9eabbd",
+    grid: "#232d3c",
+    axis: "#3e4c60",
+    surface: "#161e2a",
+  },
+};
+
 const FONT = 'var(--font-plex-sans), "IBM Plex Sans", system-ui, sans-serif';
 
 export type PlotlyFigure = { data: Data[]; layout: Partial<Layout>; config: Partial<Config> };
@@ -50,15 +102,25 @@ function escapeValues<T>(values: T[]): T[] {
   return values.map((v) => (typeof v === "string" ? (escapePlotlyText(v) as T) : v));
 }
 
-function axisTitle(text: string) {
-  return { text: escapePlotlyText(text), font: { size: 12, color: MUTED } };
+function axisTitle(text: string, color: string) {
+  return { text: escapePlotlyText(text), font: { size: 12, color } };
 }
 
 function isNumberList(values: unknown[]): values is number[] {
   return values.every((v) => typeof v === "number");
 }
 
-export function toPlotly(spec: ChartSpec): PlotlyFigure {
+export function toPlotly(spec: ChartSpec, theme: ChartTheme = "light"): PlotlyFigure {
+  const {
+    series: SERIES,
+    diverging: DIV,
+    sequential: SEQUENTIAL,
+    ink: INK,
+    muted: MUTED,
+    grid: GRID,
+    axis: AXIS,
+    surface: SURFACE,
+  } = PALETTES[theme];
   const traces = (spec.traces ?? []).map((trace) => ({
     ...trace,
     name: escapePlotlyText(trace.name),
@@ -74,7 +136,7 @@ export function toPlotly(spec: ChartSpec): PlotlyFigure {
     legend: { orientation: "h", x: 0, y: 1.12, font: { color: INK } },
     hoverlabel: { font: { family: FONT, color: INK }, bgcolor: SURFACE, bordercolor: AXIS },
     xaxis: {
-      title: axisTitle(spec.x_label),
+      title: axisTitle(spec.x_label, MUTED),
       gridcolor: GRID,
       linecolor: AXIS,
       tickfont: { color: MUTED },
@@ -82,7 +144,7 @@ export function toPlotly(spec: ChartSpec): PlotlyFigure {
       automargin: true,
     },
     yaxis: {
-      title: axisTitle(spec.y_label),
+      title: axisTitle(spec.y_label, MUTED),
       gridcolor: GRID,
       linecolor: AXIS,
       tickfont: { color: MUTED },
@@ -111,9 +173,9 @@ export function toPlotly(spec: ChartSpec): PlotlyFigure {
         ...(signed
           ? {
               colorscale: [
-                [0, DIVERGING.negative],
-                [0.5, DIVERGING.neutral],
-                [1, DIVERGING.positive],
+                [0, DIV.negative],
+                [0.5, DIV.neutral],
+                [1, DIV.positive],
               ],
               zmin: -1,
               zmax: 1,
@@ -146,8 +208,8 @@ export function toPlotly(spec: ChartSpec): PlotlyFigure {
         name: trace.name,
         x: trace.x,
         y: trace.y,
-        line: { width: 2, color: SERIES_COLORS[index], shape: "linear" },
-        marker: { size: 8, color: SERIES_COLORS[index], line: { width: 2, color: SURFACE } },
+        line: { width: 2, color: SERIES[index], shape: "linear" },
+        marker: { size: 8, color: SERIES[index], line: { width: 2, color: SURFACE } },
         connectgaps: false,
       })) as Data[],
       layout: { ...layout, hovermode: "x unified" },
@@ -165,7 +227,7 @@ export function toPlotly(spec: ChartSpec): PlotlyFigure {
         y: trace.y,
         marker: {
           size: 8,
-          color: SERIES_COLORS[index],
+          color: SERIES[index],
           opacity: 0.85,
           line: { width: 2, color: SURFACE },
         },
@@ -185,14 +247,14 @@ export function toPlotly(spec: ChartSpec): PlotlyFigure {
     const signColors =
       single && !histogram && isNumberList(y.filter((v) => v !== null)) &&
       y.some((v) => (v ?? 0) < 0) && y.some((v) => (v ?? 0) > 0)
-        ? y.map((v) => ((v ?? 0) < 0 ? DIVERGING.negative : DIVERGING.positive))
+        ? y.map((v) => ((v ?? 0) < 0 ? DIV.negative : DIV.positive))
         : null;
     return {
       type: "bar",
       name: trace.name,
       x: trace.x,
       y,
-      marker: { color: signColors ?? SERIES_COLORS[index], line: { width: 0 } },
+      marker: { color: signColors ?? SERIES[index], line: { width: 0 } },
       hovertemplate: `${multiSeries ? "%{fullData.name}: " : ""}%{y:,.4~r}<extra>%{x}</extra>`,
     };
   }) as Data[];

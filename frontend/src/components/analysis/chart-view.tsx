@@ -6,6 +6,7 @@ import { Alert } from "@/components/ui/alert";
 import { Spinner } from "@/components/ui/spinner";
 import type { ChartSpec, StoredResult } from "@/lib/analyses/api";
 import { toPlotly } from "@/lib/analyses/plotly";
+import { useTheme } from "@/lib/theme";
 
 import { ResultTable } from "./result-table";
 
@@ -16,6 +17,7 @@ export function ChartView({ spec, source }: { spec: ChartSpec; source?: StoredRe
   const container = useRef<HTMLDivElement>(null);
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
   const [showData, setShowData] = useState(false);
+  const { resolved: theme } = useTheme();
 
   useEffect(() => {
     const element = container.current;
@@ -25,7 +27,7 @@ export function ChartView({ spec, source }: { spec: ChartSpec; source?: StoredRe
       .then(async (module) => {
         if (cancelled || !element) return;
         plotly = ((module as { default?: PlotlyModule }).default ?? module) as PlotlyModule;
-        const figure = toPlotly(spec);
+        const figure = toPlotly(spec, theme);
         await plotly.react(element, figure.data, figure.layout, figure.config);
         if (!cancelled) setState("ready");
       })
@@ -36,7 +38,7 @@ export function ChartView({ spec, source }: { spec: ChartSpec; source?: StoredRe
       cancelled = true;
       if (plotly && element) plotly.purge(element);
     };
-  }, [spec]);
+  }, [spec, theme]);
 
   const tableId = `${spec.id}-data`;
   return (
