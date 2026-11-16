@@ -52,7 +52,7 @@ flowchart LR
     W --> G[LangGraph agent<br/>plan, act, tools, answer, validate]
     G --> T[Validated tools]
     T --> D[DuckDB sandbox<br/>one dataset, no file/network access]
-    G --> L[LLM provider interface<br/>Anthropic Claude]
+    G --> L[LLM provider interface<br/>Google Gemini or Anthropic Claude]
 ```
 
 Key decisions (details in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)):
@@ -73,7 +73,7 @@ Key decisions (details in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)):
 |---|---|
 | Frontend | Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS 4, TanStack Query, Plotly.js, typed client generated from OpenAPI |
 | Backend | Python 3.12, FastAPI, Pydantic 2, SQLAlchemy 2, Alembic, PostgreSQL 16, pandas, PyArrow, DuckDB, sqlglot |
-| AI | LangGraph, Anthropic SDK (Claude, `claude-opus-5-5` by default) behind a provider interface, structured outputs, tool use |
+| AI | LangGraph; Google Gemini (`google-genai`, default) or Anthropic Claude (`anthropic`) behind a provider interface; structured outputs, tool use |
 | Quality | pytest, Vitest, Testing Library, Playwright, ruff, mypy, ESLint, GitHub Actions |
 | Infrastructure | Docker, Docker Compose, Caddy (TLS edge), uv, npm |
 
@@ -84,7 +84,7 @@ With Docker:
 ```bash
 git clone https://github.com/param7862989-ops/autonomous-data-analyst.git
 cd autonomous-data-analyst
-cp .env.example .env     # set POSTGRES_PASSWORD; set ANTHROPIC_API_KEY to enable questions
+cp .env.example .env     # set POSTGRES_PASSWORD; set GEMINI_API_KEY to enable questions
 docker compose up --build -d
 ```
 
@@ -103,8 +103,9 @@ that matter most:
 
 | Variable | Purpose |
 |---|---|
-| `ANTHROPIC_API_KEY` | Enables analysis. Without it, upload and profiling work and the UI says analysis is unavailable |
-| `LLM_MODEL`, `LLM_EFFORT` | Model and effort (default `claude-opus-5-5`, `medium`) |
+| `LLM_PROVIDER` | `gemini` (default) or `anthropic` |
+| `GEMINI_API_KEY` / `ANTHROPIC_API_KEY` | The selected provider's key enables analysis. Without it, upload and profiling work and the UI says analysis is unavailable |
+| `LLM_MODEL`, `LLM_EFFORT` | Model (default `gemini-flash-latest` or `claude-opus-5-5`) and Anthropic effort (`medium`) |
 | `POSTGRES_PASSWORD` / `DATABASE_URL` | Database (Compose builds the URL itself) |
 | `ALLOWED_ORIGINS` / `PUBLIC_ORIGIN` | The browser origin, used for CORS and CSRF checks |
 | `ALLOW_REGISTRATION` | Turn off open sign-up for private deployments |

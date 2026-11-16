@@ -11,7 +11,7 @@ each control. Residual risks are listed in [KNOWN_LIMITATIONS.md](KNOWN_LIMITATI
 | Conversations, questions, answers, computed results | Reveal the content of the data |
 | Accounts and sessions | Access to everything above |
 | The server (CPU, memory, disk) and the model budget | Uploads and analyses are expensive; abuse costs money or availability |
-| Secrets (`ANTHROPIC_API_KEY`, database password) | Must never reach the browser, the model, logs or the analytics engine |
+| Secrets (`GEMINI_API_KEY` / `ANTHROPIC_API_KEY`, database password) | Must never reach the browser, the model, logs or the analytics engine |
 
 ## 2. Threat model
 

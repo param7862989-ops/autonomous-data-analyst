@@ -50,13 +50,16 @@ Reports are written to `backend/evals/results/<timestamp>-<model>.json` and `.md
 ```bash
 cd backend
 uv run python -m evals.run --mode tools                    # free, deterministic
-ANTHROPIC_API_KEY=... uv run python -m evals.run --mode agent    # full suite, calls the API
-ANTHROPIC_API_KEY=... uv run python -m evals.run --mode agent --case sales-q3-decline
+GEMINI_API_KEY=... uv run python -m evals.run --mode agent      # full suite, calls the API
+GEMINI_API_KEY=... uv run python -m evals.run --mode agent --case sales-q3-decline
+# Claude instead: LLM_PROVIDER=anthropic ANTHROPIC_API_KEY=... uv run python -m evals.run --mode agent
 ```
 
 Agent mode makes roughly 3 to 8 model calls per case (plan, tool turns, answer, possibly one
-grounding retry); 17 cases cost on the order of a few dollars with `claude-opus-5-5` at medium
-effort. Set `LLM_MODEL` / `LLM_EFFORT` to compare configurations.
+grounding retry); 17 cases fit within Gemini's free tier rate limits if run slowly (use `--case`
+to run a few at a time if you hit 429s), or cost a few dollars with `claude-opus-5-5`. Set
+`LLM_PROVIDER` / `LLM_MODEL` to compare configurations, and pin an exact model id so reports
+are reproducible.
 
 The harness itself is tested (`backend/tests/test_evals.py`): a correct scripted run must score
 1.0 on every applicable metric, a run with invented figures must fail `numeric_accuracy` and

@@ -30,7 +30,7 @@ flowchart LR
     end
     PG[(PostgreSQL<br/>app metadata)]
     FS[(Private file storage<br/>Parquet per dataset)]
-    EXT[Anthropic API]
+    EXT[LLM API<br/>Gemini or Anthropic]
 
     UI -- same-origin fetch + HttpOnly cookie --> NX --> API
     API --> SVC --> PG
@@ -50,7 +50,7 @@ flowchart LR
 | Preferred analysis path | Typed, predefined operations (`aggregate`, `time_series`, `period_comparison`, `distribution`, `correlation`, `outliers`, `missing_values`) compiled to SQL with quoted, schema-validated identifiers and bound parameters | Deterministic, testable without an LLM, and safer than free-form SQL. `execute_sql` exists for questions the operations cannot express. |
 | Arbitrary Python execution | **Not provided** | Not required by any feature; avoids the need for a hardened sandbox. Documented in KNOWN_LIMITATIONS. |
 | Agent orchestration | LangGraph `StateGraph` with explicit nodes and conditional edges | Required stack; explicit state, bounded loops, testable routing. |
-| LLM provider | Anthropic Claude via the official `anthropic` SDK, behind an `LLMProvider` interface; model configurable (default `claude-opus-5-5`) | One practical provider; interface allows replacement and a scripted test double. |
+| LLM provider | Google Gemini via the official `google-genai` SDK (default, `gemini-flash-latest`) or Anthropic Claude via the `anthropic` SDK (`claude-opus-5-5`), selected by `LLM_PROVIDER` behind an `LLMProvider` interface | The interface keeps the agent provider-neutral and allows a scripted test double; Gemini was added so the project can run with a Google AI Studio key. |
 | Structured outputs | Pydantic models for plans and final answers; tool inputs validated by Pydantic before execution | The model's output is never trusted until it validates. |
 | Background execution | Analysis runs execute in a bounded in-process thread pool; progress persisted as events; client polls | Avoids Redis/Celery for a single-node deployment. Trade-off documented: runs interrupted by a restart are marked failed. |
 | Auth | Email + password (Argon2id), opaque server-side session tokens stored hashed in PostgreSQL, HttpOnly + SameSite cookie | Tokens never readable by JavaScript; sessions revocable server-side. |
@@ -74,7 +74,7 @@ backend/app/
   datasets/          ingestion (ingest.py), type inference, profiling, storage, service
   analytics/         DuckDB sandbox (engine.py) in a capped child process (isolation.py),
                      SQL guard, typed operations, chart specs
-  agent/             llm/ (interface, Anthropic, fake), tools, prompts, context,
+  agent/             llm/ (interface, factory, Gemini, Anthropic, fake), tools, prompts, context,
                      grounding check, LangGraph workflow (graph.py)
   services/          conversations and runs (conversations.py), background runner
 backend/evals/       evaluation datasets, cases, scoring and runner
@@ -84,7 +84,8 @@ Rules:
 
 - HTTP handlers do not contain business logic.
 - `analytics/` has no knowledge of HTTP, the database, or the LLM; it is tested directly.
-- Provider-specific SDK code lives only in `agent/llm/anthropic_provider.py`.
+- Provider-specific SDK code lives only in `agent/llm/gemini_provider.py` and
+  `agent/llm/anthropic_provider.py`; `agent/llm/factory.py` picks one from `LLM_PROVIDER`.
 - Every query for user-owned data filters by the authenticated user's id. Non-owned resources
   return `404`, so existence is not leaked.
 

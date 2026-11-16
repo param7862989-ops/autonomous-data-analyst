@@ -14,7 +14,7 @@ flowchart LR
     F -- /api/* rewrite --> B[backend<br/>FastAPI + Uvicorn, :8000]
     B --> P[(PostgreSQL 16)]
     B --> V[(storage volume<br/>Parquet files)]
-    B -- HTTPS --> A[Anthropic API]
+    B -- HTTPS --> A[LLM API<br/>Gemini or Anthropic]
 ```
 
 Only the edge publishes ports (80/443). The frontend, backend and database are reachable only on
@@ -54,7 +54,7 @@ work, which suits a single VM better than serverless platforms.
    #   DOMAIN=analyst.example.com
    #   PUBLIC_ORIGIN=https://analyst.example.com
    #   POSTGRES_PASSWORD=<long random value>
-   #   ANTHROPIC_API_KEY=<your key>          # paid per use; see "Costs" below
+   #   GEMINI_API_KEY=<your key>             # LLM_PROVIDER=gemini (default); see "Costs" below
    #   ALLOW_REGISTRATION=true|false
    chmod 600 .env
    ```
@@ -80,7 +80,7 @@ work, which suits a single VM better than serverless platforms.
 - **Logs.** `docker compose logs -f backend`. Logs carry request ids, never request bodies,
   passwords, tokens or dataset contents.
 - **Secrets.** Only in `.env` on the server (not in images, Compose files or Git). Rotate the
-  Anthropic key in its console and restart the backend.
+  LLM key in Google AI Studio (or the Anthropic console) and restart the backend.
 
 ## Alternatives
 
@@ -93,10 +93,11 @@ work, which suits a single VM better than serverless platforms.
 ## Costs that can be incurred
 
 - **Server and storage**: billed by the hosting provider.
-- **Anthropic API**: billed per token. Each question makes roughly 3–8 model calls; with
-  `claude-opus-5-5` at medium effort a typical question costs a few cents. Limit exposure with
-  `ANALYSES_PER_USER_PER_HOUR`, `AGENT_MAX_ITERATIONS`, `AGENT_MAX_TOOL_CALLS`, a cheaper
-  `LLM_MODEL`, `LLM_EFFORT=low`, and a spend limit in the Anthropic console.
+- **LLM API**: each question makes roughly 3–8 model calls. Gemini's free tier (Google AI
+  Studio) covers light use of Flash models within its rate limits; paid tiers bill per token.
+  Anthropic bills per token (a few cents per question with `claude-opus-5-5` at medium effort).
+  Limit exposure with `ANALYSES_PER_USER_PER_HOUR`, `AGENT_MAX_ITERATIONS`,
+  `AGENT_MAX_TOOL_CALLS`, a cheaper `LLM_MODEL`, and a budget alert in the provider's console.
 - **Domain**: from your registrar.
 
 ## What CI verifies

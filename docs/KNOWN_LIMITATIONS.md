@@ -7,7 +7,7 @@ says why, and what would change it.
 
 - **No live-model evaluation results.** The agent has been exercised end to end only with a
   scripted model, because no API key was available during development. Answer quality with a
-  real model (Claude) is therefore unmeasured. The harness to measure it exists:
+  real model (Gemini or Claude) is therefore unmeasured. The harness to measure it exists:
   `uv run python -m evals.run --mode agent` (see [EVALUATION.md](EVALUATION.md)).
 - **Not deployed.** Images and Compose are built and smoke-tested in CI, but no public
   deployment exists. See [DEPLOYMENT.md](DEPLOYMENT.md).

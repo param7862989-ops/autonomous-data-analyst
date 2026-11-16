@@ -13,7 +13,7 @@
 ## Quick start with Docker
 
 ```bash
-cp .env.example .env          # set POSTGRES_PASSWORD; ANTHROPIC_API_KEY enables analysis
+cp .env.example .env          # set POSTGRES_PASSWORD; GEMINI_API_KEY enables analysis
 docker compose up --build -d
 open http://localhost:3000    # register, upload data/samples/sales.csv, ask a question
 docker compose down           # stop (add -v to delete the database and uploaded data)
@@ -41,7 +41,8 @@ uv run uvicorn app.asgi:app --reload --port 8000
 ```
 
 - API docs: <http://localhost:8000/api/docs>
-- Without `ANTHROPIC_API_KEY`, everything works except asking questions.
+- Without a key for the selected `LLM_PROVIDER` (`GEMINI_API_KEY` by default), everything
+  works except asking questions.
 - To try the whole flow without a key, run the test server with the scripted model instead:
   `uv run python -m tests.e2e_server --port 8000` (it answers the sample "Why did revenue
   decrease in Q3?" analysis with real computations and a scripted narrative).

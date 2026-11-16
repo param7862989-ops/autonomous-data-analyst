@@ -3,7 +3,7 @@
 #   docker compose -f docker-compose.yml -f deploy/docker-compose.prod.yml up --build -d
 #
 # Requires in .env: DOMAIN (a DNS name pointing at this host), PUBLIC_ORIGIN=https://$DOMAIN,
-# POSTGRES_PASSWORD, ANTHROPIC_API_KEY. ENVIRONMENT is forced to production (secure cookies).
+# POSTGRES_PASSWORD, GEMINI_API_KEY (or LLM_PROVIDER=anthropic + ANTHROPIC_API_KEY). ENVIRONMENT is forced to production (secure cookies).
 
 services:
   backend:

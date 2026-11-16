@@ -1,6 +1,6 @@
 # Full stack on one machine: PostgreSQL, backend, frontend.
 #
-#   cp .env.example .env    # set POSTGRES_PASSWORD (and ANTHROPIC_API_KEY to enable analysis)
+#   cp .env.example .env    # set POSTGRES_PASSWORD (and GEMINI_API_KEY to enable analysis)
 #   docker compose up --build -d
 #   open http://localhost:3000
 #
