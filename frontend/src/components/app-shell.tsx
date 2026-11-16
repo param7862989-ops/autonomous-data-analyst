@@ -6,6 +6,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
 import { BrandMark } from "@/components/brand-mark";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { useCurrentUser, useLogout } from "@/lib/auth/hooks";
 
 const NAV_ITEMS = [
@@ -35,6 +36,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             Autonomous
             <br className="hidden md:block" /> Data Analyst
           </span>
+          <ThemeToggle className="ml-auto md:hidden" />
         </div>
         <nav aria-label="Main" className="px-2 pb-3 md:flex-1 md:px-3">
           <ul className="flex gap-1 overflow-x-auto md:flex-col">
@@ -60,6 +62,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             })}
           </ul>
         </nav>
+        <div className="hidden px-4 pb-3 md:block md:px-5">
+          <ThemeToggle />
+        </div>
         <AccountPanel />
       </header>
       <main id="main" className="min-w-0 px-4 py-6 md:px-10 md:py-10">
