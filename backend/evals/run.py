@@ -334,7 +334,7 @@ def main() -> None:
         print(f"\n{len(tool_reports) - len(failed)}/{len(tool_reports)} cases passed")
         raise SystemExit(1 if failed else 0)
 
-    from app.agent.llm.anthropic_provider import AnthropicProvider
+    from app.agent.llm.factory import provider_from_settings
     from app.config import get_settings
 
     settings = get_settings()
@@ -346,8 +346,8 @@ def main() -> None:
             wanted.add(chain)
             chain = CASES_BY_ID[chain].follow_up_of
     ordered = [c for c in CASES if c.id in wanted]
-    reports = run_agent(ordered, lambda: AnthropicProvider.from_settings(settings))
-    path = write_report(settings.llm_model, reports, args.output)
+    reports = run_agent(ordered, lambda: provider_from_settings(settings))
+    path = write_report(settings.resolved_llm_model, reports, args.output)
     print(json.dumps(aggregate(reports), indent=2))
     print(f"Report: {path}")
 

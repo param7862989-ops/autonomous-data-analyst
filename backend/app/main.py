@@ -11,7 +11,7 @@ from contextlib import asynccontextmanager
 from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.agent.llm.anthropic_provider import AnthropicProvider
+from app.agent.llm.factory import provider_from_settings
 from app.api.routes import analyses, auth, conversations, datasets, health, meta
 from app.auth.csrf import CSRFMiddleware
 from app.auth.rate_limit import RateLimiter
@@ -40,8 +40,8 @@ def create_app(
     """Build the application.
 
     ``provider_factory`` and ``run_executor`` exist for tests and the end-to-end test server
-    (a scripted LLM, synchronous execution). Production uses the configured Anthropic provider
-    and a thread pool.
+    (a scripted LLM, synchronous execution). Production uses the configured LLM provider
+    (Gemini or Anthropic) and a thread pool.
     """
     settings = settings or get_settings()
     configure_logging(settings.log_level)
@@ -54,7 +54,7 @@ def create_app(
         session_factory=session_factory,
         settings=settings,
         storage=storage,
-        provider_factory=provider_factory or (lambda: AnthropicProvider.from_settings(settings)),
+        provider_factory=provider_factory or (lambda: provider_from_settings(settings)),
         executor=run_executor,
     )
 
