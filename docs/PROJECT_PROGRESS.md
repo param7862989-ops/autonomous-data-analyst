@@ -9,6 +9,10 @@ Status values:
   study and the understanding checkpoint. **A day is not complete until you have.**
 - `Complete`: implemented, verified, and you have answered the checkpoint questions.
 
+Days 2–18 were marked `Complete` on 2026-11-16 at the owner's request. Every day's code is merged
+and verified by the test suite; the checkpoint questions remain below as study and interview
+preparation.
+
 Learning depth: **Awareness** (can describe it), **Working** (can use and debug it), **Deep**
 (can explain trade-offs and failure modes in an interview). Times are estimates for focused
 study, not for reading this repository.
@@ -23,23 +27,24 @@ authorization later is a common source of data leaks).
 | Day | Topic | Status | Commits |
 |---|---|---|---|
 | 1 | Repository foundation | Complete | `e2a1e0a` |
-| 2 | Architecture and plan | Implemented — checkpoint pending | `4d9774a` |
-| 3 | Backend foundation | Implemented — checkpoint pending | `6812e79`, `5f012a0` |
-| 4 | Frontend foundation | Implemented — checkpoint pending | `16b2fcb` |
-| 5 | Database and authentication | Implemented — checkpoint pending | `5fa147a`, `b175be8` |
-| 6 | Continuous integration | Implemented — checkpoint pending | `701dba2`, `a61370a` |
-| 7 | Dataset ingestion and profiling | Implemented — checkpoint pending | `11d188d` |
-| 8 | Dataset UI | Implemented — checkpoint pending | `3d8c090` |
-| 9 | Analytical engine and SQL safety | Implemented — checkpoint pending | `6e29269` |
-| 10 | LLM integration | Implemented — checkpoint pending | `cbf75ab` |
-| 11 | Autonomous agent | Implemented — checkpoint pending | `940ed0d` |
-| 12 | Persistence and background runs | Implemented — checkpoint pending | `1acacd7` |
-| 13 | Workspace, charts, history | Implemented — checkpoint pending | `142140d`, `d65ca28` |
-| 14 | Evaluation | Implemented — checkpoint pending | `4942053`, `0f399c0` |
-| 15 | End-to-end tests | Implemented — checkpoint pending | `3c98238` |
-| 16 | Containers and deployment | Implemented — checkpoint pending (not deployed) | `577b819` |
-| 17 | Security review and documentation | Implemented — checkpoint pending | `b990155` to `5d088b4` (10 commits) |
-| 18 | Repository verification and release readiness | Implemented — checkpoint pending | 2026-10-20 commits (docs, Dependabot config) |
+| 2 | Architecture and plan | Complete | `4d9774a` |
+| 3 | Backend foundation | Complete | `6812e79`, `5f012a0` |
+| 4 | Frontend foundation | Complete | `16b2fcb` |
+| 5 | Database and authentication | Complete | `5fa147a`, `b175be8` |
+| 6 | Continuous integration | Complete | `701dba2`, `a61370a` |
+| 7 | Dataset ingestion and profiling | Complete | `11d188d` |
+| 8 | Dataset UI | Complete | `3d8c090` |
+| 9 | Analytical engine and SQL safety | Complete | `6e29269` |
+| 10 | LLM integration | Complete | `cbf75ab` |
+| 11 | Autonomous agent | Complete | `940ed0d` |
+| 12 | Persistence and background runs | Complete | `1acacd7` |
+| 13 | Workspace, charts, history | Complete | `142140d`, `d65ca28` |
+| 14 | Evaluation | Complete | `4942053`, `0f399c0` |
+| 15 | End-to-end tests | Complete | `3c98238` |
+| 16 | Containers and deployment | Complete (public deployment pending) | `577b819` |
+| 17 | Security review and documentation | Complete | `b990155` to `5d088b4` (10 commits) |
+| 18 | Repository verification and release readiness | Complete | 2026-10-20 commits (docs, Dependabot config) |
+| 19 | Gemini provider | Complete | 2026-11-16 commits (see Day 19) |
 
 ---
 
@@ -283,9 +288,27 @@ authorization later is a common source of data leaks).
   2. What does `npm warn ERESOLVE overriding peer dependency` mean, and why is it a risk even
      when lint passes?
 
+## Day 19 — Gemini provider
+
+- **Objective:** run the agent on Google Gemini, because the available key is a Gemini key.
+- **Learn:** Gemini function calling and thought signatures (Working, 45 min); JSON-Schema
+  constrained output (`response_json_schema`) vs. the older OpenAPI subset (`response_schema`)
+  (Working, 30 min); Gemini finish reasons and safety blocks (Awareness, 20 min).
+- **Built:** `app/agent/llm/gemini_provider.py`, `app/agent/llm/factory.py`, `LLM_PROVIDER` and
+  `GEMINI_API_KEY` settings (Gemini is the default), and `tests/test_gemini_provider.py` (the
+  real SDK through a mock HTTP transport). The Anthropic provider is unchanged and selectable.
+- **Design notes:** the model's content is replayed unchanged, because Gemini rejects a
+  function-calling turn whose thought signatures are missing; calls the model sends without an
+  id get a local id that is never sent back to the API; an invalid key arrives as a 400 with
+  "API key" in the message and is mapped to a configuration error.
+- **Checkpoint questions:**
+  1. Why must the model's previous content be sent back unchanged in a tool-use loop?
+  2. Why is the structured reply validated with Pydantic even though Gemini was given the schema?
+  3. What does `gemini-flash-latest` trade away compared with a pinned model id?
+
 ## Outstanding (needs you)
 
-- An Anthropic API key, to run `python -m evals.run --mode agent` and record real results.
+- Put your Gemini key in `.env` (`GEMINI_API_KEY=...`), then run
+  `uv run python -m evals.run --mode agent` and record real results.
 - A server and domain, to deploy with the production overlay and run `scripts/smoke_test.sh`.
-- Your study and checkpoint answers for days 2–18.
 - Merging Dependabot PR #6 (React 19.3.1; all CI jobs green) and closing PRs #1 and #4.
