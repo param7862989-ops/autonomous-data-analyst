@@ -10,6 +10,15 @@ from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 Environment = Literal["development", "test", "production"]
+LLMProviderName = Literal["gemini", "anthropic"]
+
+# Used when LLM_MODEL is empty. "gemini-flash-latest" is Google's alias for the newest Flash
+# model (available on the free tier); pin a specific model id in LLM_MODEL for reproducible
+# evaluations.
+DEFAULT_MODELS: dict[str, str] = {
+    "gemini": "gemini-flash-latest",
+    "anthropic": "claude-opus-5-5",
+}
 
 
 class Settings(BaseSettings):
@@ -79,9 +88,14 @@ class Settings(BaseSettings):
     analytics_process_memory_bytes: int = Field(default=2 * 1024**3, ge=0)
 
     # --- LLM provider --------------------------------------------------------------------
-    # Without an API key the app works for upload and profiling; analysis is disabled.
+    # Without an API key for the selected provider the app works for upload and profiling;
+    # analysis is disabled.
+    llm_provider: LLMProviderName = "gemini"
+    gemini_api_key: SecretStr | None = None
     anthropic_api_key: SecretStr | None = None
-    llm_model: str = "claude-opus-5-5"
+    # Empty = the provider's default model (see DEFAULT_MODELS).
+    llm_model: str | None = None
+    # Anthropic only: effort level. Gemini uses the model's default (dynamic) thinking.
     llm_effort: Literal["low", "medium", "high", "xhigh", "max"] = "medium"
     llm_timeout_seconds: float = Field(default=120.0, gt=0, le=600)
     llm_max_retries: int = Field(default=2, ge=0, le=5)
@@ -118,11 +132,28 @@ class Settings(BaseSettings):
     def is_production(self) -> bool:
         return self.environment == "production"
 
+    @field_validator("llm_model", mode="before")
+    @classmethod
+    def _blank_model_is_default(cls, value: object) -> object:
+        if isinstance(value, str) and not value.strip():
+            return None
+        return value
+
+    @property
+    def llm_api_key(self) -> SecretStr | None:
+        """The API key of the selected provider."""
+        key = self.gemini_api_key if self.llm_provider == "gemini" else self.anthropic_api_key
+        if key is None or not key.get_secret_value().strip():
+            return None
+        return key
+
+    @property
+    def resolved_llm_model(self) -> str:
+        return self.llm_model or DEFAULT_MODELS[self.llm_provider]
+
     @property
     def analysis_enabled(self) -> bool:
-        return self.anthropic_api_key is not None and bool(
-            self.anthropic_api_key.get_secret_value().strip()
-        )
+        return self.llm_api_key is not None
 
     @property
     def secure_cookies(self) -> bool:

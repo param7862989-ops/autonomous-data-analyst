@@ -36,7 +36,7 @@ from app.agent.llm.base import (
     Usage,
     UserText,
 )
-from app.config import Settings
+from app.config import DEFAULT_MODELS, Settings
 
 logger = logging.getLogger(__name__)
 
@@ -68,11 +68,12 @@ class AnthropicProvider:
 
     @classmethod
     def from_settings(cls, settings: Settings) -> AnthropicProvider:
-        if not settings.analysis_enabled or settings.anthropic_api_key is None:
+        key = settings.anthropic_api_key
+        if key is None or not key.get_secret_value().strip():
             raise LLMConfigurationError("No LLM API key is configured on this server.")
         return cls(
-            api_key=settings.anthropic_api_key.get_secret_value(),
-            model=settings.llm_model,
+            api_key=key.get_secret_value(),
+            model=settings.llm_model or DEFAULT_MODELS["anthropic"],
             effort=settings.llm_effort,
             timeout_seconds=settings.llm_timeout_seconds,
             max_retries=settings.llm_max_retries,

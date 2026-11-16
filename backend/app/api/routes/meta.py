@@ -14,5 +14,5 @@ router = APIRouter(tags=["meta"])
 def server_config(request: Request, _: CurrentUser, settings: SettingsDep) -> ServerConfig:
     override: str | None = request.app.state.provider_override
     enabled = settings.analysis_enabled or override is not None
-    model = override or (settings.llm_model if settings.analysis_enabled else None)
+    model = override or (settings.resolved_llm_model if settings.analysis_enabled else None)
     return ServerConfig(analysis_enabled=enabled, model=model)
