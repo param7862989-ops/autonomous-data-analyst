@@ -3,7 +3,7 @@
 Everything is real (HTTP API, PostgreSQL, uploads, DuckDB sandbox, LangGraph workflow,
 persistence, background thread pool) except the language model, which is the deterministic
 script in tests/scripted.py. It is never part of the production app: production always builds
-the configured Anthropic provider.
+the configured LLM provider (Gemini or Anthropic).
 
 Usage (environment as for the normal app, e.g. DATABASE_URL, STORAGE_DIR):
     uv run python -m tests.e2e_server --port 8000
