@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { ChartSpec } from "./api";
-import { DIVERGING, SERIES_COLORS, toPlotly } from "./plotly";
+import { DIVERGING, DIVERGING_DARK, SERIES_COLORS, SERIES_COLORS_DARK, toPlotly } from "./plotly";
 
 function spec(overrides: Partial<ChartSpec>): ChartSpec {
   return {
@@ -93,5 +93,33 @@ describe("toPlotly", () => {
     for (const figure of [bars, heatmap]) {
       expect(JSON.stringify(figure)).not.toMatch(/<(a|b|i)[ >]/);
     }
+  });
+});
+
+describe("toPlotly dark theme", () => {
+  it("uses the dark surface, text and series steps", () => {
+    const figure = toPlotly(
+      spec({
+        chart_type: "line",
+        traces: [
+          { name: "West", x: ["a"], y: [1] },
+          { name: "East", x: ["a"], y: [2] },
+        ],
+      }),
+      "dark",
+    );
+    expect(figure.layout.paper_bgcolor).toBe("#161e2a");
+    expect(figure.layout.font?.color).toBe("#e7ecf3");
+    const colors = figure.data.map((t) => (t as { line: { color: string } }).line.color);
+    expect(colors).toEqual([SERIES_COLORS_DARK[0], SERIES_COLORS_DARK[1]]);
+  });
+
+  it("keeps light as the default and uses dark diverging poles in dark mode", () => {
+    const signed = spec({ traces: [{ name: "change", x: ["a", "b"], y: [-1, 2] }] });
+    const light = toPlotly(signed).data[0] as { marker: { color: string[] } };
+    const dark = toPlotly(signed, "dark").data[0] as { marker: { color: string[] } };
+    expect(light.marker.color).toEqual([DIVERGING.negative, DIVERGING.positive]);
+    expect(dark.marker.color).toEqual([DIVERGING_DARK.negative, DIVERGING_DARK.positive]);
+    expect(SERIES_COLORS).toHaveLength(SERIES_COLORS_DARK.length);
   });
 });
