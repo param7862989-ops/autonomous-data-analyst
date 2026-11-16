@@ -11,6 +11,7 @@ dependencies = [
     "duckdb>=1.1",
     "email-validator>=2.2",
     "fastapi>=0.115",
+    "google-genai>=1.30",
     "langgraph>=0.6",
     "numpy>=2.0",
     "openpyxl>=3.1.5",
