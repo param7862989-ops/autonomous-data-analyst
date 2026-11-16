@@ -46,7 +46,17 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${plexSans.variable} ${sourceSerif.variable}`}>
+    // data-theme is set by theme-init.js before React hydrates, so the server's <html> can differ.
+    <html
+      lang="en"
+      className={`${plexSans.variable} ${sourceSerif.variable}`}
+      suppressHydrationWarning
+    >
+      <head>
+        {/* Must block rendering: it applies the saved theme before the first paint. */}
+        {/* eslint-disable-next-line @next/next/no-sync-scripts */}
+        <script src="/theme-init.js" />
+      </head>
       <body>
         <Providers>{children}</Providers>
       </body>
