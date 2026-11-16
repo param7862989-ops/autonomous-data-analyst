@@ -43,7 +43,7 @@ export function OverviewSummary() {
           </p>
           <Link
             href="/datasets"
-            className="mt-3 inline-flex h-10 items-center rounded-(--radius-control) bg-primary px-4 font-medium text-white hover:bg-primary-hover"
+            className="mt-3 inline-flex h-10 items-center rounded-(--radius-control) bg-primary px-4 font-medium text-on-primary hover:bg-primary-hover"
           >
             Upload a dataset
           </Link>
