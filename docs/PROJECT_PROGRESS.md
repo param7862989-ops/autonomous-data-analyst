@@ -45,6 +45,7 @@ authorization later is a common source of data leaks).
 | 17 | Security review and documentation | Complete | `b990155` to `5d088b4` (10 commits) |
 | 18 | Repository verification and release readiness | Complete | 2026-10-20 commits (docs, Dependabot config) |
 | 19 | Gemini provider | Complete | 2026-11-16 commits (see Day 19) |
+| 20 | Dark mode | Complete | 2026-11-16 commits (see Day 20) |
 
 ---
 
@@ -305,6 +306,27 @@ authorization later is a common source of data leaks).
   1. Why must the model's previous content be sent back unchanged in a tool-use loop?
   2. Why is the structured reply validated with Pydantic even though Gemini was given the schema?
   3. What does `gemini-flash-latest` trade away compared with a pinned model id?
+
+## Day 20 — Dark mode
+
+- **Objective:** a dark theme that follows the OS by default, with a System / Light / Dark switch.
+- **Learn:** CSS custom properties and cascade layers (Working, 30 min); `prefers-color-scheme`
+  and `color-scheme` (Working, 20 min); `useSyncExternalStore` for browser state (Working,
+  30 min); why dark mode is a re-stepped palette, not an inversion (Working, 20 min).
+- **Built:** dark values for every design token (`globals.css`), `on-primary` / `on-danger`
+  tokens instead of hard-coded white text, `src/lib/theme.tsx`, `ThemeToggle` in the sidebar,
+  mobile header and sign-in pages, `public/theme-init.js`, and dark chart palettes in
+  `plotly.ts` (charts redraw when the theme changes).
+- **Verified:** every dark text/background pair meets WCAG AA (lowest 6.1:1); the dark chart
+  palette passes lightness, chroma, CVD (worst adjacent ΔE 8.4), normal-vision and 3:1
+  contrast checks against the dark chart surface; with React's JavaScript blocked, a saved
+  dark preference still paints dark (no flash of the light theme).
+- **Found while building it:** the brand mark used the ink token as its tile, which turns light
+  in dark mode and hid the white line; it now has its own `brand-tile` token.
+- **Checkpoint questions:**
+  1. Why does the theme script run from `<head>` as a blocking script, not from React?
+  2. Why does the media-query block use `:where()`?
+  3. Why can't the dark chart palette simply reuse the light hex values?
 
 ## Outstanding (needs you)
 

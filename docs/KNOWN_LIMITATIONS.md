@@ -76,5 +76,4 @@ says why, and what would change it.
 ## Product
 
 - One dataset per conversation; no joins across datasets.
-- No dark mode; light theme only.
 - No export of results or charts (beyond Plotly's own image download).
