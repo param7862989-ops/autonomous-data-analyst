@@ -80,12 +80,28 @@ ground-truth figure and entity was found in the reference operation's result, fo
 | tickets-resolution-vs-satisfaction | Pearson correlation -0.860 | yes |
 | employees-median-salary | medians 135,500 / 96,600 / 64,650 / 104,350 | yes |
 
-### Agent mode: not yet run against a live model
+### Agent mode: first live runs (one case, Gemini)
 
-No language-model API key was available while this was built, so **no agent-mode results exist
-yet** and none are claimed. The harness, scoring and report format are implemented and tested
-with a scripted model. To produce real numbers, run the agent-mode command above with a key and
-record the report here.
+Run on 2026-11-19 against the Gemini API (free tier). Only **one case** has been run live so
+far, so these are smoke-test results, not a measurement of the suite:
+
+| Model | Case | Completed | Numeric accuracy | Entities | Grounded | Time |
+|---|---|---|---|---|---|---|
+| `gemini-3.5-flash-lite` | sales-q3-decline | yes | 2 / 3 | West found | yes | 42 s |
+| `gemini-3.8-flash` → fallback `gemini-3.5-flash-lite` (main model overloaded) | sales-q3-decline | yes | 2 / 3 | West found | yes | 25 s |
+
+Both runs stated Q2 2024 (758,989) and Q3 2024 (497,231) revenue correctly and named the West
+region and the Standing Desk / Laptop Pro products, but did not state the -34.49% change. The
+main model, `gemini-3.8-flash`, was overloaded (503/504) at the time, so no result for it exists
+yet.
+
+Found by running it live: retrying the overloaded main model three times (about two minutes per
+504) used up the agent's 240-second deadline before the fallback model ran, so one run ended
+with no computations. The main model is no longer retried on 429/503/504 when a fallback is
+configured.
+
+Still to do: run the full suite (`--mode agent` without `--case`) when the main model is
+available and record the aggregate here.
 
 ## Known failure modes (expected, to watch for in agent runs)
 

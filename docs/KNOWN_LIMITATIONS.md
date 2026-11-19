@@ -5,10 +5,12 @@ says why, and what would change it.
 
 ## Not verified
 
-- **No live-model evaluation results.** The agent has been exercised end to end only with a
-  scripted model, because no API key was available during development. Answer quality with a
-  real model (Gemini or Claude) is therefore unmeasured. The harness to measure it exists:
-  `uv run python -m evals.run --mode agent` (see [EVALUATION.md](EVALUATION.md)).
+- **Live-model evaluation is only a smoke test so far.** One case has been run against Gemini
+  (completed, grounded, 2 of 3 figures stated); the full suite has not yet been run against a
+  live model, so overall answer quality is unmeasured. See [EVALUATION.md](EVALUATION.md).
+- **Gemini model availability varies.** On the free tier the newest Flash models are sometimes
+  overloaded; the provider then falls back to `GEMINI_FALLBACK_MODEL` for the rest of the run,
+  which answers faster but less thoroughly.
 - **Not deployed.** Images and Compose are built and smoke-tested in CI, but no public
   deployment exists. See [DEPLOYMENT.md](DEPLOYMENT.md).
 - **Docker was not available on the development machine**; the container setup is verified only
