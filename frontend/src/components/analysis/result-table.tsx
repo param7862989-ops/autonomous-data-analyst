@@ -1,6 +1,8 @@
 import { clsx } from "clsx";
+import { Download } from "lucide-react";
 
 import type { StoredResult } from "@/lib/analyses/api";
+import { downloadFile, resultToCsv, safeFilename } from "@/lib/analyses/export";
 import { formatCell, formatInteger } from "@/lib/format";
 
 const MAX_ROWS = 100;
@@ -71,11 +73,28 @@ export function ResultTable({ result, compact = false }: { result: StoredResult;
           </tbody>
         </table>
       </div>
-      <p className="mt-1.5 text-sm text-slate">
-        {formatInteger(Math.min(count, MAX_ROWS))} of {formatInteger(count)} row(s) shown
-        {truncated ? "; the engine's row limit cut this result short" : ""}.
-        {result.notes?.length ? ` ${result.notes.join(" ")}` : ""}
-      </p>
+      <div className="mt-1.5 flex flex-wrap items-start justify-between gap-x-4 gap-y-1">
+        <p className="text-sm text-slate">
+          {formatInteger(Math.min(count, MAX_ROWS))} of {formatInteger(count)} row(s) shown
+          {truncated ? "; the engine's row limit cut this result short" : ""}.
+          {result.notes?.length ? ` ${result.notes.join(" ")}` : ""}
+        </p>
+        <button
+          type="button"
+          onClick={() =>
+            downloadFile(
+              safeFilename(`${result.id} ${result.description}`, "csv"),
+              resultToCsv(result),
+              "text/csv;charset=utf-8",
+            )
+          }
+          className="inline-flex shrink-0 items-center gap-1 text-sm font-medium text-primary underline-offset-2 hover:underline"
+          aria-label={`Download ${result.id} as CSV (${formatInteger(rows.length)} rows)`}
+        >
+          <Download size={14} aria-hidden="true" />
+          CSV
+        </button>
+      </div>
       {result.sql ? (
         <details className="mt-1.5 text-sm">
           <summary className="cursor-pointer text-slate">SQL that ran</summary>
