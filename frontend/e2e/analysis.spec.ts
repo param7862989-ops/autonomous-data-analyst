@@ -1,12 +1,18 @@
+import { readFile } from "node:fs/promises";
 import path from "node:path";
 
-import { type Page, expect, test } from "@playwright/test";
+import { type Download, type Page, expect, test } from "@playwright/test";
 
 const SAMPLE = path.resolve(__dirname, "../../data/samples/sales.csv");
 const PASSWORD = "e2e-password-123";
 
 function uniqueEmail(prefix: string) {
   return `${prefix}-${Date.now()}-${Math.floor(Math.random() * 1e6)}@example.com`;
+}
+
+async function readDownload(download: Download): Promise<string> {
+  const file = await download.path();
+  return readFile(file, "utf-8");
 }
 
 async function register(page: Page, email: string) {
@@ -77,6 +83,20 @@ test("upload, profile, analyse, follow up, revisit, and isolation between users"
   await expect(firstRun.locator("figure .main-svg").first()).toBeVisible(); // Plotly rendered
   await firstRun.getByRole("button", { name: "Show the computed result r1" }).click();
   await expect(firstRun.getByRole("cell", { name: "West", exact: true })).toBeVisible();
+
+  // Exports are real browser downloads of the loaded data.
+  const csvDownload = page.waitForEvent("download");
+  await firstRun.getByRole("button", { name: /^Download r1 as CSV/ }).click();
+  const csv = await csvDownload;
+  expect(csv.suggestedFilename()).toMatch(/^r1-.*\.csv$/);
+  expect(await readDownload(csv)).toContain("West");
+  const reportDownload = page.waitForEvent("download");
+  await firstRun
+    .getByRole("button", { name: "Download this analysis as a Markdown report" })
+    .click();
+  const report = await reportDownload;
+  expect(report.suggestedFilename()).toBe("why-did-revenue-decrease-in-q3.md");
+  expect(await readDownload(report)).toContain("## What the data shows");
   await firstRun.getByText(/How this was answered/).click();
   await expect(firstRun.getByText("Inspecting dataset")).toBeVisible();
   await expect(firstRun.getByText(/^Comparing periods: Sum of Revenue/)).toBeVisible();
