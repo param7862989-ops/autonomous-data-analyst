@@ -1,12 +1,14 @@
 "use client";
 
 import { clsx } from "clsx";
+import { FileDown } from "lucide-react";
 import { useRef, useState } from "react";
 
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { type RunDetail, isActive, useCancelRun, useRun } from "@/lib/analyses/api";
+import { downloadFile, runToMarkdown, safeFilename } from "@/lib/analyses/export";
 import { formatDateTime } from "@/lib/format";
 
 import { ActivityTimeline } from "./activity-timeline";
@@ -124,7 +126,26 @@ export function RunCard({ runId, onFollowUp }: { runId: string; onFollowUp: (q: 
         <h3 id={`q-${run.id}`} className="max-w-[65ch] text-lg font-semibold">
           {run.question}
         </h3>
-        <span className="text-sm text-slate">{formatDateTime(run.created_at)}</span>
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-slate">{formatDateTime(run.created_at)}</span>
+          {!active && outcome ? (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() =>
+                downloadFile(
+                  safeFilename(run.question, "md"),
+                  runToMarkdown(run),
+                  "text/markdown;charset=utf-8",
+                )
+              }
+              aria-label="Download this analysis as a Markdown report"
+            >
+              <FileDown size={15} aria-hidden="true" />
+              Report
+            </Button>
+          ) : null}
+        </div>
       </header>
 
       <div className="mt-4 space-y-6">

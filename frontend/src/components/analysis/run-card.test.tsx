@@ -2,6 +2,7 @@ import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { stubBlobUrls } from "@/test/blob-urls";
 import { jsonResponse, mockFetch, renderWithQuery } from "@/test/utils";
 
 import { RunCard } from "./run-card";
@@ -162,5 +163,39 @@ describe("RunCard", () => {
         .filter((r) => r.method === "POST");
       expect(posts.map((r) => new URL(r.url).pathname)).toEqual(["/api/analyses/run-1/cancel"]);
     });
+  });
+
+  it("downloads the report and a result's CSV from a finished analysis", async () => {
+    const user = userEvent.setup();
+    mockFetch(() => jsonResponse(COMPLETED));
+    const urls = stubBlobUrls();
+    const { blobs } = urls;
+    const names: string[] = [];
+    const click = vi
+      .spyOn(HTMLAnchorElement.prototype, "click")
+      .mockImplementation(function (this: HTMLAnchorElement) {
+        names.push(this.download);
+      });
+    renderWithQuery(<RunCard runId="run-1" onFollowUp={vi.fn()} />);
+
+    await user.click(
+      await screen.findByRole("button", { name: "Download this analysis as a Markdown report" }),
+    );
+    expect(names).toEqual(["why-did-revenue-decrease-in-q3.md"]);
+    expect(await blobs[0].text()).toContain("- West fell by $157,871. (evidence: r1)");
+
+    await user.click(screen.getByRole("button", { name: /Sum of Revenue by Region/ }));
+    await user.click(screen.getByRole("button", { name: "Download r1 as CSV (2 rows)" }));
+    expect(names[1]).toBe("r1-sum-of-revenue-by-region.csv");
+    expect(await blobs[1].text()).toContain("West,-157871.28");
+    click.mockRestore();
+    urls.restore();
+  });
+
+  it("offers no report while the analysis is running", async () => {
+    mockFetch(() => jsonResponse({ ...BASE, status: "running", events: [] }));
+    renderWithQuery(<RunCard runId="run-1" onFollowUp={vi.fn()} />);
+    await screen.findByText("Analysing");
+    expect(screen.queryByRole("button", { name: /Markdown report/ })).toBeNull();
   });
 });
