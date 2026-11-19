@@ -46,6 +46,7 @@ authorization later is a common source of data leaks).
 | 18 | Repository verification and release readiness | Complete | 2026-10-20 commits (docs, Dependabot config) |
 | 19 | Gemini provider | Complete | 2026-11-16 commits (see Day 19) |
 | 20 | Dark mode | Complete | 2026-11-16 commits (see Day 20) |
+| 21 | Live Gemini run and overload fallback | Complete | 2026-11-19 commits (see Day 21) |
 
 ---
 
@@ -328,9 +329,30 @@ authorization later is a common source of data leaks).
   2. Why does the media-query block use `:where()`?
   3. Why can't the dark chart palette simply reuse the light hex values?
 
+## Day 21 — Live Gemini run and overload fallback
+
+- **Objective:** run the agent against the real Gemini API for the first time.
+- **What happened:** the default `gemini-flash-latest` alias does not exist (404). Listing the
+  key's models showed the 2.5 models are retired for new keys, `gemini-4-*` models need billing,
+  the 3.x Flash models were overloaded (503/504), and the Flash-Lite models answered.
+- **Built:** default model `gemini-3.8-flash` (Google's recommended replacement); a
+  `GEMINI_FALLBACK_MODEL` (default `gemini-3.5-flash-lite`) used for the rest of a run on
+  429/503/504; no retries of the main model on those errors when a fallback exists; a
+  placeholder thought signature on rebuilt function calls; Google's message logged on 404.
+- **Found by running it live:** (1) three retries of a 504 took about six minutes and used up the
+  agent's deadline, so the run "completed" with no computations; (2) Gemini 3 rejects a function
+  call without a thought signature (400), while replaying another Gemini model's signed turn
+  works, which is what makes a mid-run fallback safe.
+- **Result:** `sales-q3-decline` completed and grounded, 2 of 3 figures, in 25 seconds (see
+  [EVALUATION.md](EVALUATION.md)).
+- **Checkpoint questions:**
+  1. Why is retrying sometimes worse than failing fast?
+  2. Why does the fallback stay on for the rest of the run instead of switching back?
+  3. Why did a run with stop reason `deadline` still score `completed = 1`, and is that right?
+
 ## Outstanding (needs you)
 
-- Put your Gemini key in `.env` (`GEMINI_API_KEY=...`), then run
-  `uv run python -m evals.run --mode agent` and record real results.
+- Run the full agent-mode suite (`uv run python -m evals.run --mode agent`) when
+  `gemini-3.8-flash` is not overloaded, and record the aggregate in EVALUATION.md.
 - A server and domain, to deploy with the production overlay and run `scripts/smoke_test.sh`.
 - Merging Dependabot PR #6 (React 19.3.1; all CI jobs green) and closing PRs #1 and #4.
