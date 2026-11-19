@@ -2,7 +2,8 @@
 
 The HTTP request that starts an analysis only records it as queued and returns; a worker thread
 loads the dataset into a fresh sandboxed engine, runs the agent, and persists activity events
-as they happen and the outcome at the end. Clients poll the run.
+as they happen and the outcome at the end. Clients follow the run over a live-update stream
+(woken through ``RunNotifier`` after each commit) or by polling.
 
 Trade-off (documented in KNOWN_LIMITATIONS): runs live in the API process, so a restart
 interrupts them. On startup, any run left queued or running is marked failed.
@@ -33,6 +34,7 @@ from app.datasets.storage import DatasetStorage
 from app.db.base import utcnow
 from app.db.models import AnalysisEvent, AnalysisRun, Conversation, Dataset
 from app.services.conversations import ACTIVE_STATUSES, prior_turns
+from app.services.run_events import RunNotifier
 
 logger = logging.getLogger(__name__)
 
@@ -43,9 +45,15 @@ _CANCEL_CHECK_INTERVAL = 1.0
 class EventRecorder:
     """Persists activity events, upserting by key so a step's status can progress."""
 
-    def __init__(self, session_factory: sessionmaker[Session], run_id: uuid.UUID) -> None:
+    def __init__(
+        self,
+        session_factory: sessionmaker[Session],
+        run_id: uuid.UUID,
+        notifier: RunNotifier | None = None,
+    ) -> None:
         self._session_factory = session_factory
         self._run_id = run_id
+        self._notifier = notifier
         self._seq: dict[str, int] = {}
 
     def __call__(self, event: ActivityEvent) -> None:
@@ -80,6 +88,9 @@ class EventRecorder:
                 db.commit()
         except Exception:
             logger.exception("Failed to record an activity event")
+            return
+        if self._notifier is not None:
+            self._notifier.notify(self._run_id)
 
 
 class CancelChecker:
@@ -116,8 +127,10 @@ class AnalysisRunner:
         storage: DatasetStorage,
         provider_factory: ProviderFactory,
         executor: Executor | None = None,
+        notifier: RunNotifier | None = None,
     ) -> None:
         self._session_factory = session_factory
+        self._notifier = notifier
         self._settings = settings
         self._storage = storage
         self._provider_factory = provider_factory
@@ -186,6 +199,7 @@ class AnalysisRunner:
             run.status = "running"
             run.started_at = utcnow()
             db.commit()
+            self._notify(run_id)
             question = run.question
             history = prior_turns(db, run)
             context = DatasetContext.from_dataset(
@@ -224,7 +238,7 @@ class AnalysisRunner:
                         max_tool_calls_per_turn=settings.agent_max_tool_calls_per_turn,
                         deadline_seconds=settings.agent_deadline_seconds,
                     ),
-                    emit=EventRecorder(self._session_factory, run_id),
+                    emit=EventRecorder(self._session_factory, run_id, self._notifier),
                     should_cancel=CancelChecker(self._session_factory, run_id),
                 )
             )
@@ -266,3 +280,8 @@ class AnalysisRunner:
             if conversation is not None:
                 conversation.updated_at = utcnow()
             db.commit()
+        self._notify(run_id)
+
+    def _notify(self, run_id: uuid.UUID) -> None:
+        if self._notifier is not None:
+            self._notifier.notify(run_id)

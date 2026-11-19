@@ -22,6 +22,7 @@ from app.db.session import create_db_engine, create_session_factory
 from app.errors import ERROR_RESPONSES, register_error_handlers
 from app.logging_config import configure_logging
 from app.middleware import RequestContextMiddleware
+from app.services.run_events import RunNotifier
 from app.services.runner import AnalysisRunner, ProviderFactory
 
 logger = logging.getLogger(__name__)
@@ -50,7 +51,9 @@ def create_app(
     engine = create_db_engine(settings)
     session_factory = create_session_factory(engine)
     storage = DatasetStorage(settings.storage_dir)
+    notifier = RunNotifier(max_streams_per_user=settings.event_streams_per_user)
     runner = AnalysisRunner(
+        notifier=notifier,
         session_factory=session_factory,
         settings=settings,
         storage=storage,
@@ -89,6 +92,7 @@ def create_app(
     app.state.rate_limiter = RateLimiter()
     app.state.storage = storage
     app.state.runner = runner
+    app.state.run_notifier = notifier
     app.state.provider_override = provider_factory().model_name if provider_factory else None
     app.state.ingestion_slots = threading.BoundedSemaphore(settings.max_concurrent_ingestions)
     app.dependency_overrides[get_settings] = lambda: settings

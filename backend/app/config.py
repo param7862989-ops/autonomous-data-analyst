@@ -112,6 +112,16 @@ class Settings(BaseSettings):
     agent_max_tool_calls_per_turn: int = Field(default=4, ge=1, le=10)
     agent_deadline_seconds: float = Field(default=240.0, ge=10, le=1800)
     analysis_workers: int = Field(default=4, ge=1, le=32)
+
+    # --- Live updates (Server-Sent Events) -----------------------------------------------
+    # Open streams per user (each holds a connection); past it, the browser falls back to
+    # polling. A stream closes after the max lifetime; the browser then reconnects or polls.
+    event_streams_per_user: int = Field(default=4, ge=1, le=50)
+    event_stream_max_seconds: float = Field(default=300.0, ge=10, le=3600)
+    # Re-read the run at least this often, even without a wake-up (other processes, misses).
+    event_stream_check_seconds: float = Field(default=2.0, ge=0.1, le=30)
+    # Comment line sent when nothing else was, so proxies keep the connection open.
+    event_stream_keepalive_seconds: float = Field(default=15.0, ge=1, le=120)
     analyses_per_user_per_hour: int = Field(default=30, ge=1)
 
     @field_validator("allowed_origins", mode="before")
