@@ -104,8 +104,9 @@ that matter most:
 | Variable | Purpose |
 |---|---|
 | `LLM_PROVIDER` | `gemini` (default) or `anthropic` |
+| `GEMINI_FALLBACK_MODEL` | Used for the rest of a run when the Gemini model is overloaded or out of quota (default `gemini-3.5-flash-lite`; empty disables) |
 | `GEMINI_API_KEY` / `ANTHROPIC_API_KEY` | The selected provider's key enables analysis. Without it, upload and profiling work and the UI says analysis is unavailable |
-| `LLM_MODEL`, `LLM_EFFORT` | Model (default `gemini-flash-latest` or `claude-opus-5-5`) and Anthropic effort (`medium`) |
+| `LLM_MODEL`, `LLM_EFFORT` | Model (default `gemini-3.8-flash` or `claude-opus-5-5`) and Anthropic effort (`medium`) |
 | `POSTGRES_PASSWORD` / `DATABASE_URL` | Database (Compose builds the URL itself) |
 | `ALLOWED_ORIGINS` / `PUBLIC_ORIGIN` | The browser origin, used for CORS and CSRF checks |
 | `ALLOW_REGISTRATION` | Turn off open sign-up for private deployments |
