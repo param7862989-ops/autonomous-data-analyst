@@ -7,8 +7,11 @@
 * The model's own content (including thought signatures, which Gemini requires back on the
   next turn of a function-calling exchange) is replayed unchanged within a run.
 * Thinking text is never returned to the agent or shown to users.
-* The SDK retries 408/429/5xx; failures are mapped to provider-neutral errors whose messages
-  never include request content or credentials.
+* The SDK retries 408/429/5xx. If the model is still overloaded or out of quota (429/503/504)
+  and a fallback model is configured, the provider switches to it for the rest of the run
+  (checked live: a model accepts another Gemini model's signed turns).
+* Failures are mapped to provider-neutral errors whose messages never include request content
+  or credentials.
 """
 
 from __future__ import annotations
@@ -49,6 +52,16 @@ T = TypeVar("T", bound=BaseModel)
 # API (Gemini then pairs responses with calls by order and name).
 LOCAL_ID_PREFIX = "gemini-local-"
 
+# Gemini 3 rejects a function call without a thought signature (400). Turns rebuilt from text
+# and tool calls (not replayed from the model) carry this placeholder, which Google documents
+# for function calls the model did not produce (checked live).
+PLACEHOLDER_SIGNATURE = b"skip_thought_signature_validator"
+
+# Overloaded (503), timed out at Google (504) or out of quota for this model (429).
+_FALLBACK_STATUSES = {429, 503, 504}
+_RETRY_STATUSES = [408, 429, 500, 502, 503, 504]
+_RETRY_STATUSES_WITH_FALLBACK = sorted(set(_RETRY_STATUSES) - _FALLBACK_STATUSES)
+
 _REFUSAL_REASONS = {
     "SAFETY",
     "PROHIBITED_CONTENT",
@@ -84,15 +97,26 @@ class GeminiProvider:
         model: str,
         timeout_seconds: float,
         max_retries: int,
+        fallback_model: str | None = None,
         http_client: Any = None,
     ) -> None:
+        self._fallback = fallback_model if fallback_model and fallback_model != model else None
+
         # http_client is only injected by tests (a mock transport); production uses the default.
-        options = types.HttpOptions(
-            timeout=int(timeout_seconds * 1000),
-            retry_options=types.HttpRetryOptions(attempts=max_retries + 1),
-            httpx_client=http_client,
-        )
-        self._client = genai.Client(api_key=api_key, http_options=options)
+        def client(retry_statuses: list[int]) -> genai.Client:
+            options = types.HttpOptions(
+                timeout=int(timeout_seconds * 1000),
+                retry_options=types.HttpRetryOptions(
+                    attempts=max_retries + 1, http_status_codes=retry_statuses
+                ),
+                httpx_client=http_client,
+            )
+            return genai.Client(api_key=api_key, http_options=options)
+
+        # With a fallback, overload errors are not retried on the main model: each 504 can take
+        # the whole request timeout, and retrying it used up the run's deadline (seen live).
+        self._client = client(_RETRY_STATUSES_WITH_FALLBACK if self._fallback else _RETRY_STATUSES)
+        self._fallback_client = client(_RETRY_STATUSES) if self._fallback else None
         self._model = model
 
     @classmethod
@@ -105,10 +129,12 @@ class GeminiProvider:
             model=settings.llm_model or DEFAULT_MODELS["gemini"],
             timeout_seconds=settings.llm_timeout_seconds,
             max_retries=settings.llm_max_retries,
+            fallback_model=settings.gemini_fallback_model,
         )
 
     @property
     def model_name(self) -> str:
+        """The model in use; after a fallback, the fallback model."""
         return self._model
 
     # --- Requests ----------------------------------------------------------------------------
@@ -184,10 +210,30 @@ class GeminiProvider:
     def _call(
         self, messages: list[Message], config: types.GenerateContentConfig
     ) -> types.GenerateContentResponse:
+        contents = _to_gemini(messages)
         try:
-            return self._client.models.generate_content(
-                model=self._model, contents=_to_gemini(messages), config=config
-            )
+            try:
+                return self._client.models.generate_content(
+                    model=self._model, contents=contents, config=config
+                )
+            except genai_errors.APIError as exc:
+                if (
+                    self._fallback is None
+                    or self._fallback_client is None
+                    or exc.code not in _FALLBACK_STATUSES
+                ):
+                    raise
+                logger.warning(
+                    "LLM model %s unavailable (status %s); using fallback model %s for this run",
+                    self._model,
+                    exc.code,
+                    self._fallback,
+                )
+                self._model, self._fallback = self._fallback, None
+                self._client, self._fallback_client = self._fallback_client, None
+                return self._client.models.generate_content(
+                    model=self._model, contents=contents, config=config
+                )
         except genai_errors.ClientError as exc:
             code = exc.code
             if code == 429:
@@ -200,7 +246,8 @@ class GeminiProvider:
                     "The server's language model credentials were rejected."
                 ) from exc
             if code == 404:
-                logger.error("LLM model not found: %s", self._model)
+                # Google's message names the replacement for a retired model; it holds no secrets.
+                logger.error("LLM model not found: %s (%s)", self._model, exc.message)
                 raise LLMConfigurationError(
                     "The configured language model does not exist or is not available."
                 ) from exc
@@ -278,7 +325,8 @@ def _to_gemini(messages: list[Message]) -> list[types.Content]:
                 types.Part(
                     function_call=types.FunctionCall(
                         id=_api_id(call.id), name=call.name, args=call.input
-                    )
+                    ),
+                    thought_signature=PLACEHOLDER_SIGNATURE,
                 )
                 for call in message.tool_calls
             )

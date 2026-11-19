@@ -12,11 +12,11 @@ from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 Environment = Literal["development", "test", "production"]
 LLMProviderName = Literal["gemini", "anthropic"]
 
-# Used when LLM_MODEL is empty. "gemini-flash-latest" is Google's alias for the newest Flash
-# model (available on the free tier); pin a specific model id in LLM_MODEL for reproducible
-# evaluations.
+# Used when LLM_MODEL is empty. gemini-3.8-flash is the model Google recommends in place of the
+# retired 2.5 models (checked against the live model list, 2026-11-19). Model ids change; set
+# LLM_MODEL to pin one.
 DEFAULT_MODELS: dict[str, str] = {
-    "gemini": "gemini-flash-latest",
+    "gemini": "gemini-3.8-flash",
     "anthropic": "claude-opus-5-5",
 }
 
@@ -95,6 +95,9 @@ class Settings(BaseSettings):
     anthropic_api_key: SecretStr | None = None
     # Empty = the provider's default model (see DEFAULT_MODELS).
     llm_model: str | None = None
+    # Gemini only: used for the rest of a run when the main model is overloaded or out of quota
+    # (HTTP 429/503/504). Empty disables the fallback.
+    gemini_fallback_model: str | None = "gemini-3.5-flash-lite"
     # Anthropic only: effort level. Gemini uses the model's default (dynamic) thinking.
     llm_effort: Literal["low", "medium", "high", "xhigh", "max"] = "medium"
     llm_timeout_seconds: float = Field(default=120.0, gt=0, le=600)
@@ -132,7 +135,7 @@ class Settings(BaseSettings):
     def is_production(self) -> bool:
         return self.environment == "production"
 
-    @field_validator("llm_model", mode="before")
+    @field_validator("llm_model", "gemini_fallback_model", mode="before")
     @classmethod
     def _blank_model_is_default(cls, value: object) -> object:
         if isinstance(value, str) and not value.strip():
