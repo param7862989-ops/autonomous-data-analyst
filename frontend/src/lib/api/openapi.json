@@ -2519,6 +2519,66 @@
         ]
       }
     },
+    "/api/analyses/{run_id}/events": {
+      "get": {
+        "description": "A `text/event-stream`. Each `run` event carries the full analysis (the same JSON as `GET /analyses/{run_id}`) whenever it changes, starting with its current state. The stream closes after a finished state, or with an `end` event whose `reason` is `session_ended`, `not_found`, `timeout` or `too_many_streams`; clients then fall back to polling `GET /analyses/{run_id}`.",
+        "operationId": "stream_analysis_api_analyses__run_id__events_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/event-stream": {}
+            },
+            "description": "Event stream"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Validation error"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Client error"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Server error"
+          }
+        },
+        "summary": "Live updates for an analysis (Server-Sent Events)",
+        "tags": [
+          "analyses"
+        ]
+      }
+    },
     "/api/auth/login": {
       "post": {
         "operationId": "login_api_auth_login_post",
