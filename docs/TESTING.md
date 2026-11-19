@@ -8,7 +8,7 @@ provider that implements the same interface.
 |---|---|---|
 | Backend unit + integration | pytest, real PostgreSQL | API, auth, ingestion, profiling, analytics, SQL guard, sandbox, agent, persistence |
 | Evaluation (tool mode) | `python -m evals.run --mode tools` | Analytical correctness against ground truth computed with pandas |
-| Frontend unit | Vitest + Testing Library | Components, API client, polling, forms, chart translation |
+| Frontend unit | Vitest + Testing Library | Components, API client, polling, forms, chart translation, theme switch, CSV and report exports |
 | End-to-end | Playwright | The full stack in a browser, with a scripted model |
 | Containers | Docker Compose in CI | Images build, stack becomes healthy, upload works through the frontend, non-root |
 
@@ -41,7 +41,7 @@ truncate every table after each test. Without `TEST_DATABASE_URL` they are skipp
 ## Frontend (`cd frontend`)
 
 ```bash
-npm test                 # Vitest, 66 tests
+npm test                 # Vitest, 80 tests
 npm run lint && npm run typecheck
 ```
 

@@ -78,4 +78,7 @@ says why, and what would change it.
 ## Product
 
 - One dataset per conversation; no joins across datasets.
-- No export of results or charts (beyond Plotly's own image download).
+- Exports are per analysis: each computed result as CSV (up to the engine's row cap of
+  `MAX_RESULT_ROWS`, default 1,000) and the analysis as a Markdown report (tables in the report
+  show the first 50 rows). Charts download as PNG through Plotly's toolbar. There is no PDF
+  export and no export of a whole conversation in one file.

@@ -70,6 +70,7 @@ flowchart LR
 | Security headers on API and pages (CSP, `nosniff`, `X-Frame-Options: DENY`, referrer and permissions policies); HSTS at the TLS edge | API: `test_security_headers_present`; pages: E2E "pages send security headers" |
 | React escaping everywhere; no `dangerouslySetInnerHTML` | Code review (no occurrences in `frontend/src`) |
 | Chart labels from data are escaped so Plotly cannot render them as links or markup | `plotly.test.ts` ("escapes text from the data…"), checked in Chromium |
+| CSV exports neutralise spreadsheet formulas (text cells starting with `= + - @`, tab or CR get a leading `'`, per OWASP "CSV injection"); Markdown reports escape markup from model and data text; exports are built in the browser from data the user already loaded, so there is no export endpoint | `export.test.ts` ("neutralises spreadsheet formulas…", "escapes markup…"); E2E downloads |
 
 ### Uploads
 
