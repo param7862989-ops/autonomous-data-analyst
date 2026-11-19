@@ -2,14 +2,23 @@
 
 from __future__ import annotations
 
+import asyncio
+import contextlib
+import json
 import uuid
-from typing import Annotated
+from collections.abc import AsyncIterator
+from typing import Annotated, Literal
 
-from fastapi import APIRouter, Query, status
+import anyio
+from fastapi import APIRouter, Query, Request, status
+from fastapi.responses import StreamingResponse
+from sqlalchemy import select
 
 from app.agent.schemas import AgentOutcome
-from app.api.deps import CurrentUser, DbSession
+from app.api.deps import CurrentUser, DbSession, SettingsDep
+from app.auth.service import resolve_session
 from app.db.models import AnalysisRun
+from app.errors import RateLimitedError
 from app.schemas.analyses import (
     ActivityEventOut,
     HistoryItem,
@@ -18,6 +27,7 @@ from app.schemas.analyses import (
     RunSummary,
 )
 from app.services import conversations as service
+from app.services.run_events import RunNotifier
 
 router = APIRouter(prefix="/analyses", tags=["analyses"])
 
@@ -75,7 +85,10 @@ def list_analyses(
     description="Poll while `status` is `queued` or `running`.",
 )
 def get_analysis(run_id: uuid.UUID, user: CurrentUser, db: DbSession) -> RunDetail:
-    run = service.get_run(db, user=user, run_id=run_id)
+    return run_detail(service.get_run(db, user=user, run_id=run_id))
+
+
+def run_detail(run: AnalysisRun) -> RunDetail:
     return RunDetail(
         **run_summary(run).model_dump(),
         error_code=run.error_code,
@@ -94,5 +107,109 @@ def get_analysis(run_id: uuid.UUID, user: CurrentUser, db: DbSession) -> RunDeta
     status_code=status.HTTP_202_ACCEPTED,
     summary="Cancel a queued or running analysis",
 )
-def cancel_analysis(run_id: uuid.UUID, user: CurrentUser, db: DbSession) -> RunSummary:
-    return run_summary(service.request_cancel(db, user=user, run_id=run_id))
+def cancel_analysis(
+    run_id: uuid.UUID, request: Request, user: CurrentUser, db: DbSession
+) -> RunSummary:
+    summary = run_summary(service.request_cancel(db, user=user, run_id=run_id))
+    notifier: RunNotifier = request.app.state.run_notifier
+    notifier.notify(run_id)
+    return summary
+
+
+# --- Live updates (Server-Sent Events) -------------------------------------------------------
+
+STREAM_HEADERS = {
+    # no-transform stops proxies (and Next.js's compression) from buffering the stream.
+    "Cache-Control": "no-cache, no-transform",
+    # nginx-style proxies buffer responses unless told not to.
+    "X-Accel-Buffering": "no",
+}
+
+EndReason = Literal["session_ended", "not_found", "timeout", "too_many_streams"]
+
+
+def _frame(event: str, data: str) -> str:
+    # Compact JSON has no newlines, so one data line is enough.
+    return f"event: {event}\ndata: {data}\n\n"
+
+
+def _end(reason: EndReason) -> str:
+    return _frame("end", json.dumps({"reason": reason}))
+
+
+@router.get(
+    "/{run_id}/events",
+    summary="Live updates for an analysis (Server-Sent Events)",
+    description=(
+        "A `text/event-stream`. Each `run` event carries the full analysis (the same JSON as "
+        "`GET /analyses/{run_id}`) whenever it changes, starting with its current state. The "
+        "stream closes after a finished state, or with an `end` event whose `reason` is "
+        "`session_ended`, `not_found`, `timeout` or `too_many_streams`; clients then fall "
+        "back to polling `GET /analyses/{run_id}`."
+    ),
+    response_class=StreamingResponse,
+    responses={200: {"content": {"text/event-stream": {}}, "description": "Event stream"}},
+)
+def stream_analysis(
+    run_id: uuid.UUID,
+    request: Request,
+    user: CurrentUser,
+    db: DbSession,
+    settings: SettingsDep,
+) -> StreamingResponse:
+    service.get_run(db, user=user, run_id=run_id)  # 404 for other users' runs
+    notifier: RunNotifier = request.app.state.run_notifier
+    session_factory = request.app.state.session_factory
+    token = request.cookies.get(settings.session_cookie_name, "")
+    user_id = user.id
+
+    def load() -> tuple[EndReason | None, RunDetail | None]:
+        # Re-checked on every read: signing out (or the session expiring) ends the stream.
+        with session_factory() as session:
+            current = resolve_session(session, token=token, settings=settings)
+            if current is None or current.id != user_id:
+                return "session_ended", None
+            run = session.scalar(
+                select(AnalysisRun).where(AnalysisRun.id == run_id, AnalysisRun.user_id == user_id)
+            )
+            if run is None:
+                return "not_found", None
+            return None, run_detail(run)
+
+    async def events() -> AsyncIterator[str]:
+        loop = asyncio.get_running_loop()
+        deadline = loop.time() + settings.event_stream_max_seconds
+        try:
+            with notifier.reserve(user_id), notifier.subscribe(run_id) as changed:
+                last_payload: str | None = None
+                last_sent = loop.time()
+                while True:
+                    # Cleared before reading, so a change committed during the read wakes
+                    # the next iteration instead of being lost.
+                    changed.clear()
+                    reason, detail = await anyio.to_thread.run_sync(load)
+                    if reason is not None or detail is None:
+                        yield _end(reason or "not_found")
+                        return
+                    payload = detail.model_dump_json()
+                    if payload != last_payload:
+                        yield _frame("run", payload)
+                        last_payload, last_sent = payload, loop.time()
+                    if detail.status not in service.ACTIVE_STATUSES:
+                        return
+                    remaining = deadline - loop.time()
+                    if remaining <= 0:
+                        yield _end("timeout")
+                        return
+                    with contextlib.suppress(TimeoutError):
+                        await asyncio.wait_for(
+                            changed.wait(),
+                            timeout=min(settings.event_stream_check_seconds, remaining),
+                        )
+                    if loop.time() - last_sent >= settings.event_stream_keepalive_seconds:
+                        yield ": keep-alive\n\n"
+                        last_sent = loop.time()
+        except RateLimitedError:
+            yield _end("too_many_streams")
+
+    return StreamingResponse(events(), media_type="text/event-stream", headers=STREAM_HEADERS)

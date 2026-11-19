@@ -36,4 +36,5 @@ HEALTHCHECK --interval=15s --timeout=5s --start-period=20s --retries=5 \
 # process, and startup marks unfinished runs as interrupted. Scale with ANALYSIS_WORKERS and
 # more containers only after moving those to shared infrastructure (see KNOWN_LIMITATIONS).
 # FORWARDED_ALLOW_IPS lists proxies whose X-Forwarded-For is trusted (the frontend/edge).
-CMD ["sh", "-c", "alembic upgrade head && exec uvicorn app.asgi:app --host 0.0.0.0 --port 8000 --workers 1 --proxy-headers --forwarded-allow-ips \"$FORWARDED_ALLOW_IPS\" --no-server-header"]
+# Live-update streams stay open while an analysis runs; do not let them hold up a restart.
+CMD ["sh", "-c", "alembic upgrade head && exec uvicorn app.asgi:app --host 0.0.0.0 --port 8000 --workers 1 --proxy-headers --forwarded-allow-ips \"$FORWARDED_ALLOW_IPS\" --no-server-header --timeout-graceful-shutdown 10"]
