@@ -1,6 +1,7 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { type QueryClient, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 
 import { api, unwrap } from "@/lib/api/client";
 import type { components } from "@/lib/api/schema";
@@ -62,28 +63,62 @@ export function useConversation(id: string) {
   });
 }
 
-/** Polls once a second while the run is queued or running, then stops. */
+function refreshAfterFinish(queryClient: QueryClient, run: RunDetail) {
+  // The conversation's run summaries and the history now have a final state.
+  void queryClient.invalidateQueries({ queryKey: analysisKeys.conversation(run.conversation_id) });
+  void queryClient.invalidateQueries({ queryKey: ["analyses", "history"] });
+}
+
+/**
+ * Follows a run while it is queued or running: over a Server-Sent Events stream when it is
+ * connected, otherwise by polling once a second. The stream writes into the same query cache,
+ * so components cannot tell the two apart. If the stream fails or the server ends it early
+ * (limit, lifetime), polling takes over for the rest of the run.
+ */
 export function useRun(id: string) {
   const queryClient = useQueryClient();
-  return useQuery({
+  const [streaming, setStreaming] = useState(false);
+  const query = useQuery({
     queryKey: analysisKeys.run(id),
     queryFn: async () => {
       const run = await unwrap(
         api.GET("/api/analyses/{run_id}", { params: { path: { run_id: id } } }),
       );
-      if (!isActive(run.status)) {
-        // The conversation's run summaries and the history now have a final state.
-        void queryClient.invalidateQueries({ queryKey: analysisKeys.conversation(run.conversation_id) });
-        void queryClient.invalidateQueries({ queryKey: ["analyses", "history"] });
-      }
+      if (!isActive(run.status)) refreshAfterFinish(queryClient, run);
       return run;
     },
-    refetchInterval: (query) => {
-      const status = query.state.data?.status;
-      return status && isActive(status) ? 1000 : false;
+    refetchInterval: (q) => {
+      const status = q.state.data?.status;
+      return status && isActive(status) && !streaming ? 1000 : false;
     },
-    staleTime: (query) => (query.state.data && !isActive(query.state.data.status) ? Infinity : 0),
+    staleTime: (q) => (q.state.data && !isActive(q.state.data.status) ? Infinity : 0),
   });
+
+  const active = query.data ? isActive(query.data.status) : false;
+  useEffect(() => {
+    if (!active || typeof EventSource === "undefined") return;
+    const source = new EventSource(`/api/analyses/${encodeURIComponent(id)}/events`);
+    const stop = () => {
+      source.close();
+      setStreaming(false);
+    };
+    source.onopen = () => setStreaming(true);
+    source.addEventListener("run", (event) => {
+      const run = JSON.parse((event as MessageEvent<string>).data) as RunDetail;
+      queryClient.setQueryData(analysisKeys.run(id), run);
+      if (!isActive(run.status)) {
+        stop();
+        refreshAfterFinish(queryClient, run);
+      }
+    });
+    // "end" (limit, lifetime, signed out) or a network error: poll instead. EventSource would
+    // reconnect by itself; closing it keeps a broken proxy from causing a reconnect loop.
+    source.addEventListener("end", stop);
+    source.onerror = stop;
+    return stop;
+  }, [active, id, queryClient]);
+
+  return query;
 }
 
 export function useHistory(datasetId?: string, limit = 50) {
