@@ -2,17 +2,25 @@ import { clsx } from "clsx";
 import { AlertTriangle } from "lucide-react";
 
 import type { AgentOutcome, Finding } from "@/lib/analyses/api";
-import { splitFigures } from "@/lib/analyses/figures";
+import { namesWithDigits, splitFigures } from "@/lib/analyses/figures";
 
 /**
  * Figures in facts that the backend verified against computed results get the highlighter;
  * figures it could not verify are flagged. Hypotheses get a dashed underline and a label, so
  * the distinction never depends on colour alone.
  */
-function Statement({ text, unverified }: { text: string; unverified: string[] }) {
+function Statement({
+  text,
+  unverified,
+  names,
+}: {
+  text: string;
+  unverified: string[];
+  names: string[];
+}) {
   return (
     <>
-      {splitFigures(text, unverified).map((segment, index) =>
+      {splitFigures(text, unverified, names).map((segment, index) =>
         segment.figure === "verified" ? (
           <mark key={index} className="tabular rounded-[2px] bg-highlight/70 px-0.5 text-ink">
             {segment.text}
@@ -73,6 +81,7 @@ export function AnswerView({
   const facts = answer.findings.filter((f) => f.kind === "fact");
   const hypotheses = answer.findings.filter((f) => f.kind === "hypothesis");
   const grounding = outcome.grounding;
+  const names = namesWithDigits(outcome.results);
   const groundingIssues = grounding
     ? grounding.unverified_numbers.length +
       grounding.invalid_references.length +
@@ -82,7 +91,7 @@ export function AnswerView({
   return (
     <div className="space-y-5">
       <p className="font-serif text-[17px] leading-relaxed">
-        <Statement text={answer.summary} unverified={unverified} />
+        <Statement text={answer.summary} unverified={unverified} names={names} />
       </p>
 
       {groundingIssues ? (
@@ -99,7 +108,7 @@ export function AnswerView({
           <ul className="mt-2 space-y-2">
             {facts.map((finding, index) => (
               <li key={index} className="border-l-2 border-ink pl-3">
-                <Statement text={finding.statement} unverified={unverified} />
+                <Statement text={finding.statement} unverified={unverified} names={names} />
                 <EvidenceLinks finding={finding} onCite={onCite} />
               </li>
             ))}

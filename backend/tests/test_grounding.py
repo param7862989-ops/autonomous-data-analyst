@@ -102,3 +102,36 @@ def test_years_counts_and_dates_are_not_checked() -> None:
 def test_unicode_minus_and_currency() -> None:
     tokens = extract_numbers("change of " + chr(0x2212) + "63,359 and €1.5M")
     assert [t.value for t in tokens] == [63359.0, 1_500_000.0]
+
+
+def named(*names: str) -> StoredResult:
+    table = TableResult(
+        columns=[ResultColumn(name="segment", type="VARCHAR")],
+        rows=[[name] for name in names],
+        row_count=len(names),
+        truncated=False,
+    )
+    return RESULT.model_copy(update={"id": "r2", "table": table})
+
+
+def test_digits_inside_names_from_the_results_are_not_figures() -> None:
+    report = check_answer(
+        answer("Monitor 27in fell by $63,359 and Model 300 (EU) by 17,306."),
+        [RESULT, named("Monitor 27in", "Model 300", "Model 300 (EU)")],
+        [],
+    )
+    assert report.passed, report
+    assert report.checked_numbers == 2
+
+
+@pytest.mark.parametrize(
+    ("cell", "text", "bad"),
+    [
+        ("5,000,000", "Revenue was 5,000,000.", "5,000,000"),  # not a name
+        ("$5M", "Revenue was $5M.", "$5M"),  # not a name
+        ("Monitor 27in", "Revenue fell by 27%.", "27%"),  # not that name
+        ("Model 300", "Model 3000 sold well.", "3000"),  # only whole names
+    ],
+)
+def test_names_cannot_hide_invented_figures(cell: str, text: str, bad: str) -> None:
+    assert check_answer(answer(text), [RESULT, named(cell)], []).unverified_numbers == [bad]

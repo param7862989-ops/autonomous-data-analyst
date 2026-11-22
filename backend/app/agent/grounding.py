@@ -9,7 +9,8 @@ Checks that:
 
 It is a heuristic, not a proof: it cannot tell whether a correct number is attributed to the
 right thing. It reliably catches invented or miscalculated figures. Years, dates, quarter labels
-and small integers (likely counts or ordinals) are not checked.
+and small integers (likely counts or ordinals) are not checked, and neither are digits inside a
+name that appears in the results ("Monitor 27in").
 """
 
 from __future__ import annotations
@@ -47,7 +48,25 @@ class NumberToken:
     percent: bool
 
 
-def extract_numbers(text: str) -> list[NumberToken]:
+def names_with_digits(results: list[StoredResult]) -> list[str]:
+    """Text cells that are names containing digits, longest first.
+
+    They must start with a letter, so a cell such as "5,000,000" or "$5M" cannot be used to
+    get a figure past the check.
+    """
+    names = {
+        value
+        for result in results
+        for row in result.table.rows
+        for value in row
+        if isinstance(value, str) and value[:1].isalpha() and any(c.isdigit() for c in value)
+    }
+    return sorted(names, key=lambda name: (-len(name), name))
+
+
+def extract_numbers(text: str, names: list[str] | None = None) -> list[NumberToken]:
+    for name in names or []:
+        text = re.sub(rf"(?<!\w){re.escape(name)}(?!\w)", " ", text)
     for pattern in _STRIP:
         text = pattern.sub(" ", text)
     tokens: list[NumberToken] = []
@@ -111,8 +130,9 @@ def check_answer(
         if finding.kind == "fact" and not [e for e in finding.evidence if e in known_results]:
             report.unsupported_facts.append(finding.statement)
 
+    names = names_with_digits(results)
     for statement in statements:
-        for token in extract_numbers(statement):
+        for token in extract_numbers(statement, names):
             report.checked_numbers += 1
             if not _matches(token, plain, ratios):
                 report.unverified_numbers.append(token.text)

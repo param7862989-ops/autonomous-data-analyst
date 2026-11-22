@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { splitFigures } from "./figures";
+import { namesWithDigits, splitFigures } from "./figures";
 
 const figures = (text: string, unverified: string[] = []) =>
   splitFigures(text, unverified)
@@ -27,6 +27,13 @@ describe("splitFigures", () => {
       ["$63,359", "verified"],
       ["99.9%", "unverified"],
     ]);
+  });
+
+  it("leaves digits inside names from the results alone", () => {
+    const names = namesWithDigits([{ table: { rows: [["Monitor 27in", 22795.87], ["$5M", "Model 300"]] } }]);
+    expect(names).toEqual(["Monitor 27in", "Model 300"]);
+    const shown = splitFigures("Monitor 27in fell 22,795.87; Model 3000 fell 27%.", [], names);
+    expect(shown.filter((s) => s.figure).map((s) => s.text)).toEqual(["22,795.87", "3000", "27%"]);
   });
 
   it("keeps the full text when segments are joined", () => {

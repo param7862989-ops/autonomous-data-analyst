@@ -1,7 +1,8 @@
 /**
  * Split a statement into text and figures, mirroring the backend grounding check
  * (backend/app/agent/grounding.py), so verified figures can be highlighted and unverified ones
- * flagged. Dates, quarter labels, result ids, years and small counts are not figures.
+ * flagged. Dates, quarter labels, result ids, years, small counts and digits inside names from
+ * the results ("Monitor 27in") are not figures.
  */
 
 const SKIP =
@@ -15,8 +16,23 @@ function normalize(token: string): string {
   return token.trim().replace(/^[-−]/, "");
 }
 
-export function splitFigures(text: string, unverified: string[]): Segment[] {
+/** Text cells that are names containing digits: they start with a letter, as in the backend. */
+export function namesWithDigits(results: { table: { rows: unknown[][] } }[]): string[] {
+  const names = new Set<string>();
+  for (const value of results.flatMap((result) => result.table.rows.flat())) {
+    if (typeof value === "string" && /^\p{L}/u.test(value) && /\d/.test(value)) names.add(value);
+  }
+  return [...names];
+}
+
+export function splitFigures(text: string, unverified: string[], names: string[] = []): Segment[] {
   const skipped: [number, number][] = [];
+  for (const name of names) {
+    for (let at = text.indexOf(name); at !== -1; at = text.indexOf(name, at + 1)) {
+      const around = `${text[at - 1] ?? " "}${text[at + name.length] ?? " "}`;
+      if (!/[\p{L}\p{N}_]/u.test(around)) skipped.push([at, at + name.length]);
+    }
+  }
   for (const match of text.matchAll(SKIP)) {
     skipped.push([match.index, match.index + match[0].length]);
   }
