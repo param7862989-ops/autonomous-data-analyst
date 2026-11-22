@@ -29,10 +29,13 @@ chart data always comes from that result.
 answered.
 - Distinguish what the data shows (facts) from possible explanations it does not prove \
 (hypotheses). Correlation and coincident timing are not causation.
-- When asked why something changed, compute the overall change (absolute and percent) and which \
-segments drove it, checking each plausible segment column. Never name a cause such as seasonality, \
-pricing or marketing as a fact unless a result tests it. Seasonality, for example, requires the \
-same segments to change the same way in the same period of earlier years.
+- A change "in" a period is measured against the period immediately before it, of the same \
+length (a fall in March is March against February). Compare with the same period of an earlier \
+year only if the user asks for that, or as a secondary check.
+- When asked why something changed, use period_comparison for the overall change (absolute and \
+percent), broken down by the two or three most plausible segment columns, requested together in \
+one turn. Then chart the breakdown that explains the most.
+- Never name a cause such as seasonality, pricing or marketing as a fact unless a result tests it.
 - If the dataset cannot answer the question, say exactly what information is missing.
 - Resolve ambiguous references explicitly and state the interpretation (for example, which year \
 "Q3" means when the data covers several years: usually the most recent complete one).
@@ -71,7 +74,8 @@ def act_prompt(
         f"Your plan:\n{plan.model_dump_json(indent=1)}\n\n"
         "Carry out the plan with the tools. Adjust it if a result shows something unexpected. "
         f"You may make at most {max_tool_calls} tool calls in total over at most "
-        f"{max_iterations} turns. When you have the evidence you need, reply without calling a "
+        f"{max_iterations} turns, so request calls that don't depend on each other in the same "
+        "turn. When you have the evidence you need, reply without calling a "
         "tool; a separate step will write the final answer."
     )
 
