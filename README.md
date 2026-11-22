@@ -65,7 +65,7 @@ Key decisions (details in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)):
 | Charts copy data from results | The model can't plot numbers it didn't compute |
 | Deterministic grounding check with one corrective retry | Invented or miscalculated figures are caught and flagged, not trusted |
 | No arbitrary Python execution | Not needed for the features; avoids a code sandbox |
-| Polling and an in-process worker pool | Simple and robust on one node; the trade-offs are documented |
+| Live updates with a polling fallback, and an in-process worker pool | Simple and robust on one node; the trade-offs are documented |
 
 ## Tech stack
 
@@ -125,7 +125,7 @@ export TEST_DATABASE_URL=postgresql+psycopg://user:password@localhost:5432/ada_t
 ./scripts/check.sh       # backend lint/types/tests, tool-mode evals, API contract, frontend lint/types/tests/build
 ```
 
-About 340 backend tests (against real PostgreSQL), 66 frontend tests, a Playwright
+About 385 backend tests (against real PostgreSQL), 84 frontend tests, a Playwright
 end-to-end suite, the evaluation suite and a Docker smoke test all run in CI on every push, with
 no paid API calls. Highlights: 74 SQL-injection and sandbox-escape cases; every analytical
 operation checked against independent pandas computations; cross-user isolation on every

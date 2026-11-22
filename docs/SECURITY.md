@@ -56,6 +56,7 @@ flowchart LR
 | Control | Tests |
 |---|---|
 | Every query filters by the signed-in user; another user's records return `404` exactly like missing ones | `test_datasets_api.py::test_users_cannot_see_each_others_datasets`, `test_analyses_api.py::test_users_cannot_reach_each_others_conversations_or_analyses`, E2E "isolation between users" |
+| Live-update streams check ownership, end at sign-out, are limited per user and hold no database connection while open | `test_run_events.py` |
 | Follow-up context comes only from the same conversation | `test_follow_up_uses_earlier_turns_of_the_same_conversation_only` |
 | Storage keys derive from server-generated IDs; user filenames are display-only | `test_storage.py::test_key_is_derived_from_ids_only`, `test_invalid_keys_are_rejected`, `test_filename_is_display_only` |
 | Deleting a user or conversation cascades | `test_deleting_user_cascades_to_datasets`, `test_rename_and_delete_cascade` |

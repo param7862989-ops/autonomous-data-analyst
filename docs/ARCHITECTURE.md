@@ -52,7 +52,7 @@ flowchart LR
 | Agent orchestration | LangGraph `StateGraph` with explicit nodes and conditional edges | Required stack; explicit state, bounded loops, testable routing. |
 | LLM provider | Google Gemini via the official `google-genai` SDK (default `gemini-3.8-flash`, with `gemini-3.5-flash-lite` as an overload fallback) or Anthropic Claude via the `anthropic` SDK (`claude-opus-5-5`), selected by `LLM_PROVIDER` behind an `LLMProvider` interface | The interface keeps the agent provider-neutral and allows a scripted test double; Gemini was added so the project can run with a Google AI Studio key. |
 | Structured outputs | Pydantic models for plans and final answers; tool inputs validated by Pydantic before execution | The model's output is never trusted until it validates. |
-| Background execution | Analysis runs execute in a bounded in-process thread pool; progress persisted as events; client polls | Avoids Redis/Celery for a single-node deployment. Trade-off documented: runs interrupted by a restart are marked failed. |
+| Background execution | Analysis runs execute in a bounded in-process thread pool; progress persisted as events; client follows a Server-Sent Events stream, with polling as fallback | Avoids Redis/Celery for a single-node deployment. Trade-off documented: runs interrupted by a restart are marked failed. |
 | Auth | Email + password (Argon2id), opaque server-side session tokens stored hashed in PostgreSQL, HttpOnly + SameSite cookie | Tokens never readable by JavaScript; sessions revocable server-side. |
 | CSRF | SameSite=Lax cookie **and** a required custom request header on unsafe methods | A cross-site form cannot set custom headers; a cross-site `fetch` with one is blocked by CORS preflight. |
 | Browser-to-API routing | Next.js rewrites `/api/*` to the backend | Same-origin cookies in every environment; narrow CORS. |
@@ -117,7 +117,7 @@ sequenceDiagram
     G->>L: final answer (structured, cites result ids)
     G->>G: grounding check of numbers vs results
     R->>D: store result, assistant message, status=completed
-    U->>A: GET /api/analyses/{run_id} (polling)
+    U->>A: GET /api/analyses/{run_id}/events (stream; polling as fallback)
     A-->>U: status, events, answer, charts, tables
 ```
 

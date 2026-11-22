@@ -24,8 +24,9 @@ says why, and what would change it.
   again"), rate limits are per process, and running several Uvicorn workers or replicas would
   break restart recovery. Scaling out needs a shared job queue and shared rate-limit store
   (e.g. Redis), which were deliberately not added for a single-node deployment.
-- **Polling, not streaming.** The UI polls a run once a second while it is active. Server-sent
-  events would cut latency and requests; polling was chosen for robustness through proxies.
+- **Live updates are per process.** The UI follows a run over Server-Sent Events and polls once
+  a second if the stream fails. Wake-ups and the per-user stream limit live in memory; a stream
+  also re-reads the run every 2 seconds.
 - **Rate limiting needs a client-IP-aware edge.** Next.js rewrites do not add
   `X-Forwarded-For`, so without the Caddy edge (production overlay) every browser appears to the
   backend as the frontend's address and per-IP limits become shared. The base Compose file
@@ -71,8 +72,8 @@ says why, and what would change it.
   patched release exists). It is not in the production image and only processes this
   repository's own glob patterns.
 - **The analytics memory cap is Linux-only.** The engine's child process caps its address
-  space with `RLIMIT_AS`, which Windows lacks; there, only the timeout-and-kill protection
-  applies. Production images run Linux. Each analysis also pays for starting that process.
+  space with `RLIMIT_AS`, which Windows lacks and macOS rejects; there, only the
+  timeout-and-kill protection applies. Production images run Linux. Each analysis also pays for starting that process.
 - **No audit log** of who viewed what beyond application logs.
 
 ## Product

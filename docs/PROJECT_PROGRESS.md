@@ -378,4 +378,4 @@ authorization later is a common source of data leaks).
 - Run the full agent-mode suite (`uv run python -m evals.run --mode agent`) when
   `gemini-3.8-flash` is not overloaded, and record the aggregate in EVALUATION.md.
 - A server and domain, to deploy with the production overlay and run `scripts/smoke_test.sh`.
-- Merging Dependabot PR #6 (React 19.3.1; all CI jobs green) and closing PRs #1 and #4.
+- Reviewing the open Dependabot PRs (#3, #7, #10, #11, #15, #17); #10 and #11 are major upgrades.

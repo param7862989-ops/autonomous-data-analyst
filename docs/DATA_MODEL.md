@@ -93,7 +93,7 @@ erDiagram
 - **Outcome as JSONB.** A run's plan, answer, result tables, chart specs and grounding report
   are written once, read together, and never queried by field, so a document column fits. Result
   tables are bounded by the engine's row cap.
-- **Events as rows.** Activity events are written while a run progresses and polled by the UI;
+- **Events as rows.** Activity events are written while a run progresses and streamed to (or polled by) the UI;
   they are upserted by `(run_id, key)` so a step moves from `running` to `completed`.
 - **One active run per conversation, enforced by the database.** A partial unique index on
   `analysis_runs (conversation_id) WHERE status IN ('queued', 'running')` decides when two
@@ -104,7 +104,7 @@ erDiagram
 - **Cascades.** Deleting a user removes everything they own; deleting a dataset removes its file,
   conversations and runs; deleting a conversation removes its runs and events.
 - **Indexes** follow the access paths: `(user_id, created_at)` for listings and history,
-  `(conversation_id, created_at)` for threads, `(run_id, seq)` for event polling,
+  `(conversation_id, created_at)` for threads, `(run_id, seq)` for reading events,
   `status` for restart recovery, and `token_hash` (unique) for session lookup.
 - **Timestamps** are timezone-aware (`timestamptz`) and set in UTC.
 

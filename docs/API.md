@@ -52,6 +52,7 @@ TypeScript client is generated from; CI fails if it is stale.
 | `POST` | `/api/conversations/{conversation_id}/analyses` | Ask a question (`{question}`, ≤ 2,000 chars) | 202 |
 | `GET` | `/api/analyses` | Analysis history (optional `dataset_id`, `conversation_id`) | 200 |
 | `GET` | `/api/analyses/{run_id}` | An analysis: status, activity events and outcome | 200 |
+| `GET` | `/api/analyses/{run_id}/events` | Live updates (Server-Sent Events) | 200 |
 | `POST` | `/api/analyses/{run_id}/cancel` | Cancel a queued or running analysis | 202 |
 
 ## Asking a question
@@ -60,7 +61,7 @@ TypeScript client is generated from; CI fails if it is stale.
 POST /api/conversations/{id}/analyses   {"question": "Why did revenue decrease in Q3?"}
   -> 202 {"id": "...", "status": "queued", ...}
 
-GET /api/analyses/{id}                   (poll about once a second)
+GET /api/analyses/{id}                   (or follow /events; poll once a second as a fallback)
   -> {"status": "running", "events": [{"key": "plan", "label": "Planning analysis",
                                        "status": "running", ...}, ...]}
   -> {"status": "completed", "events": [...], "outcome": {
