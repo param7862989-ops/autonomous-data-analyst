@@ -78,7 +78,7 @@ def test_a_timeout_inside_the_engine_keeps_its_error_type(parquet: Path) -> None
         assert engine.count_rows() == 50_000
 
 
-@pytest.mark.skipif(sys.platform == "win32", reason="RLIMIT_AS is only available on Linux/macOS")
+@pytest.mark.skipif(sys.platform != "linux", reason="RLIMIT_AS is only enforced on Linux")
 def test_memory_cap_stops_string_amplification(parquet: Path) -> None:
     # Bypasses the SQL guard on purpose: REPEAT is not allowlisted. This is the sandbox's own
     # defence against anything that might slip through. The cap is the production default:
@@ -88,6 +88,13 @@ def test_memory_cap_stops_string_amplification(parquet: Path) -> None:
     with IsolatedEngine(parquet, EngineLimits(), address_space_bytes=cap) as engine:
         with pytest.raises(ResourceLimitError):
             engine.execute("SELECT SUM(LENGTH(REPEAT(product, 1000000))) FROM data")
+        assert engine.count_rows() == 50_000
+
+
+def test_the_default_cap_never_stops_the_engine_from_starting(parquet: Path) -> None:
+    # Runs on every platform: macOS rejects RLIMIT_AS, so the cap must be skipped there.
+    cap = Settings.model_fields["analytics_process_memory_bytes"].default
+    with IsolatedEngine(parquet, EngineLimits(), address_space_bytes=cap) as engine:
         assert engine.count_rows() == 50_000
 
 

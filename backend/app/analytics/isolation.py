@@ -12,8 +12,9 @@ results, for one). So the engine used for model-driven analysis runs in a child 
 
 The child receives only the dataset path and limits. It removes secret-looking environment
 variables it inherited (API keys, database URL, passwords) before loading anything, and DuckDB
-inside it has no file or network access. On Windows,
-where ``resource`` is unavailable, only the kill-on-timeout protection applies.
+inside it has no file or network access. Outside Linux
+(Windows has no ``resource`` module, macOS rejects the limit) only the kill-on-timeout
+protection applies.
 """
 
 from __future__ import annotations
@@ -56,7 +57,7 @@ def scrub_environment() -> list[str]:
 
 
 def _apply_memory_cap(address_space_bytes: int | None) -> None:
-    if not address_space_bytes or sys.platform == "win32":
+    if not address_space_bytes or sys.platform != "linux":
         return
     import resource
 
