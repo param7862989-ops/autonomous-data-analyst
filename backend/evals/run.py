@@ -21,6 +21,7 @@ import statistics
 import sys
 import tempfile
 import time
+from collections import Counter
 from collections.abc import Callable
 from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
@@ -105,19 +106,22 @@ def run_tools(cases: list[Case]) -> list[ToolCaseReport]:
             data = loaded[case.dataset]
             frame = frames[case.dataset]
             report = ToolCaseReport(case.id, True)
+            schema = data.context(case.dataset).schema()
             with AnalyticsEngine(data.parquet, EngineLimits()) as engine:
-                outcome = adapter.validate_python(case.reference).run(
-                    engine, data.context(case.dataset).schema()
-                )
+                computed = [
+                    adapter.validate_python(reference).run(engine, schema)
+                    for reference in (case.reference, *case.more_references)
+                ]
             stored = [
                 StoredResult(
-                    id="r1",
+                    id=f"r{number}",
                     tool="execute_analysis",
                     operation=outcome.operation,
                     description=outcome.description,
                     table=outcome.table,
                     summary=outcome.summary,
                 )
+                for number, outcome in enumerate(computed, start=1)
             ]
             for truth in case.truths:
                 value = float(truth.compute(frame))
@@ -175,6 +179,12 @@ class AgentCaseReport:
     scores: dict[str, float | None]
     notes: list[str] = field(default_factory=list)
     summary: str | None = None
+    # The model that wrote the answer: the fallback's name if the run switched to it.
+    model: str = "unknown"
+    # Enough to diagnose a lost point without paying for another run.
+    findings: list[dict[str, Any]] = field(default_factory=list)
+    grounding: dict[str, Any] | None = None
+    operations: list[str] = field(default_factory=list)
 
 
 def _score(
@@ -233,7 +243,8 @@ def _score(
             1.0 if outcome.plan is not None and outcome.plan.interpretation else 0.0
         )
     scores["grounded"] = 1.0 if outcome.grounding is not None and outcome.grounding.passed else 0.0
-    scores["charts_consistent"] = 1.0 if charts_consistent(outcome) else 0.0
+    if outcome.charts:  # no charts is nothing to score, not a pass
+        scores["charts_consistent"] = 1.0 if charts_consistent(outcome) else 0.0
     if case.limits:
         within = outcome.tool_calls <= case.limits.get(
             "max_tool_calls", 10**6
@@ -320,6 +331,14 @@ def run_agent(
                     scores=scores,
                     notes=notes + ([outcome.error_message] if outcome.error_message else []),
                     summary=outcome.answer.summary if outcome.answer else None,
+                    model=provider.model_name,
+                    findings=(
+                        [f.model_dump(mode="json") for f in outcome.answer.findings]
+                        if outcome.answer
+                        else []
+                    ),
+                    grounding=outcome.grounding.model_dump() if outcome.grounding else None,
+                    operations=[result.operation for result in outcome.results],
                 )
             )
             print(f"[{case.id}] {outcome.status} {scores}", file=sys.stderr)
@@ -342,19 +361,24 @@ def aggregate(reports: list[AgentCaseReport]) -> dict[str, float]:
     return summary
 
 
-def write_report(model: str, reports: list[AgentCaseReport], output: Path | None) -> Path:
+def write_report(requested: str, reports: list[AgentCaseReport], output: Path | None) -> Path:
     RESULTS_DIR.mkdir(exist_ok=True)
     stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+    answered_by = dict(Counter(report.model for report in reports))
+    model = "+".join(sorted(answered_by)) or requested
     path = output or RESULTS_DIR / f"{stamp}-{model}.json"
     metrics = aggregate(reports)
     payload = {
         "model": model,
+        "requested_model": requested,
+        "answered_by": answered_by,
         "created_at": stamp,
         "aggregate": metrics,
         "cases": [asdict(r) for r in reports],
     }
     path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8", newline="\n")
-    markdown = [f"# Agent evaluation: {model} ({stamp})", "", "| Metric | Value |", "|---|---|"]
+    markdown = [f"# Agent evaluation: {model} ({stamp})", "", f"Requested model: {requested}"]
+    markdown += ["", "| Metric | Value |", "|---|---|"]
     markdown += [f"| {k} | {v} |" for k, v in metrics.items()]
     markdown += ["", "| Case | Status | Scores | Notes |", "|---|---|---|---|"]
     for r in reports:

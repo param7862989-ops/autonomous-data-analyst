@@ -4,12 +4,15 @@ docs/EVALUATION.md.)"""
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 import pytest
 
 from app.agent.llm.base import AssistantTurn, ToolResults
 from app.agent.llm.fake import Call, FakeProvider, done_turn, tool_turn
 from evals.cases import CASES, CASES_BY_ID
-from evals.run import aggregate, run_agent, run_tools
+from evals.run import aggregate, run_agent, run_tools, write_report
 from tests.scripted import COMPARISON, sales_provider
 
 
@@ -26,12 +29,12 @@ def test_agent_scoring_rewards_a_correct_grounded_answer() -> None:
     assert scores["completed"] == 1.0
     assert scores["numeric_accuracy"] == 1.0
     assert scores["computed_correctly"] == 1.0
-    assert scores["entity_accuracy"] == 1.0
+    assert scores["entity_accuracy"] == 0.5  # the script never looks at products
     assert scores["tool_selection"] == 1.0
     assert scores["grounded"] == 1.0
     assert scores["charts_consistent"] == 1.0
     assert scores["interpretation_stated"] == 1.0
-    assert reports[0].notes == []
+    assert reports[0].notes == ["Answer does not mention Standing Desk."]
 
 
 def test_agent_scoring_catches_wrong_numbers_and_entities() -> None:
@@ -126,3 +129,32 @@ def test_follow_up_scoring_requires_the_earlier_scope() -> None:
     assert by_region.scores["context_preserved"] == 1.0
     # The script repeats the regional comparison, so it loses the "that region" scope.
     assert by_product.scores["context_preserved"] == 0.0
+
+
+def test_report_names_the_model_that_answered(tmp_path: Path) -> None:
+    reports = run_agent([CASES_BY_ID["sales-q3-decline"]], sales_provider)
+    path = write_report("requested-model", reports, tmp_path / "report.json")
+    saved = json.loads(path.read_text())
+    assert saved["model"] == "scripted-test"
+    assert saved["requested_model"] == "requested-model"
+    assert saved["answered_by"] == {"scripted-test": 1}
+    case = saved["cases"][0]
+    assert case["findings"]
+    assert case["operations"] == ["period_comparison"]
+    assert case["grounding"]["unverified_numbers"] == []
+
+
+def test_an_answer_without_charts_gets_no_chart_score() -> None:
+    def chartless() -> FakeProvider:
+        provider = sales_provider()
+
+        def tool_step(call: Call) -> AssistantTurn:
+            if any(isinstance(m, ToolResults) for m in call.messages):
+                return done_turn()
+            return tool_turn(("execute_analysis", COMPARISON))
+
+        provider._tool_step = tool_step
+        return provider
+
+    report = run_agent([CASES_BY_ID["sales-q3-decline"]], chartless)[0]
+    assert "charts_consistent" not in report.scores

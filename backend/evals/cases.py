@@ -41,6 +41,8 @@ class Case:
     follow_up_of: str | None = None
     # A typed operation an analyst would run; checked against the truths in tool mode.
     reference: dict[str, Any] | None = None
+    # Further operations, when one result cannot hold every truth and entity.
+    more_references: tuple[dict[str, Any], ...] = ()
     limits: dict[str, Any] = field(default_factory=dict)
     # The engine fails the run's first query; the agent has to notice and recover.
     fail_first_query: bool = False
@@ -64,6 +66,10 @@ def _q3(f: Frame) -> Frame:
 
 def _region_change(f: Frame) -> pd.Series:
     return _q3(f).groupby("Region")["Revenue"].sum() - _q2(f).groupby("Region")["Revenue"].sum()
+
+
+def _product_change(f: Frame) -> pd.Series:
+    return _q3(f).groupby("Product")["Revenue"].sum() - _q2(f).groupby("Product")["Revenue"].sum()
 
 
 def _west_product_change(f: Frame) -> pd.Series:
@@ -199,11 +205,13 @@ CASES: list[Case] = [
                 percent=True,
             ),
         ),
-        entities=(lambda f: _region_change(f).idxmin(),),
+        # Both planted causes: naming only one of them is half an answer.
+        entities=(lambda f: _region_change(f).idxmin(), lambda f: _product_change(f).idxmin()),
         expected_operations=("period_comparison", "time_series", "aggregate", "sql"),
         expected_columns=("order_date", "revenue"),
         expect_interpretation=True,
         reference=Q3_COMPARISON,
+        more_references=({**Q3_COMPARISON, "breakdown": "product"},),
     ),
     Case(
         id="sales-q3-follow-up-region",
