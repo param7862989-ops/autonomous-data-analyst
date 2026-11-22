@@ -16,7 +16,7 @@ provider that implements the same interface.
 
 ```bash
 export TEST_DATABASE_URL=postgresql+psycopg://user:password@localhost:5432/ada_test
-uv run pytest            # ~385 tests
+uv run pytest            # ~390 tests
 uv run pytest -k sql_guard
 ```
 
@@ -33,16 +33,17 @@ truncate every table after each test. Without `TEST_DATABASE_URL` they are skipp
 | `test_isolation.py` | The engine in its child process: same results as in-process, typed errors across the process boundary, a killed child restarts, a hung query is killed, secrets scrubbed, and (Linux only, so in CI and WSL, skipped on Windows and macOS) the memory cap stops a string-amplifying query at the production default |
 | `test_operations.py`, `test_charts.py` | Every analytical operation compared with an independent pandas computation; values are bound, not interpolated; chart data equals result data |
 | `test_anthropic_provider.py`, `test_gemini_provider.py` | The real Anthropic and Google GenAI SDKs through a mock HTTP transport: request shape, tool-call parsing, replay (including Gemini thought signatures), structured output, refusal/safety blocks, truncation, 400/401/403/404/429/5xx, timeouts; provider selection from settings |
-| `test_agent.py`, `test_grounding.py` | Workflow routing, unanswerable questions, invalid tool input, rejected SQL, iteration/tool/deadline limits, cancellation, model failures, structured-output retry, grounding retry and persistent-failure reporting |
+| `test_agent.py`, `test_grounding.py` | Workflow routing, unanswerable questions, invalid tool input, rejected SQL, iteration/tool/deadline limits, cancellation, model failures, retry of malformed structured and tool replies, grounding retry and persistent-failure reporting |
 | `test_analyses_api.py` | Full flow through the API, follow-ups use only the same conversation, **cross-user isolation on every route**, model not configured, one active run per conversation (including two simultaneous starts), cancellation, restart recovery |
 | `test_run_events.py` | Live updates: progress through to completion, ownership, sign-out, per-user limit, lifetime, no database connection held while a stream is open |
 | `test_migrations.py` | Upgrade/downgrade round trip; models match migrations; migration 0004 resolves pre-existing duplicate active runs |
-| `test_evals.py` | Tool-mode evals pass; the scorer rewards a correct run and catches invented figures |
+| `test_evals.py` | Tool-mode evals pass; the scorer rewards a correct run, catches invented figures, lost follow-up scope and failure to recover |
+| `test_live_llm.py` | Opt-in: the configured real provider returns a valid plan and completes a tool-call round trip |
 
 ## Frontend (`cd frontend`)
 
 ```bash
-npm test                 # Vitest, 84 tests
+npm test                 # Vitest, 105 tests
 npm run lint && npm run typecheck
 ```
 
@@ -50,7 +51,9 @@ Components are tested with mocked `fetch` (and a mocked Plotly module, since jsd
 charts): auth forms and safe redirects, the session guard, upload validation and the sheet
 selection round trip, dataset list states, row pagination, the run card's polling from running
 to completed, failure and cancel states, answer highlighting of verified and unverified
-figures, the question composer, and the Plotly translation (palette order, legends, diverging
+figures, the question composer, starting a conversation from a dataset, the conversation page
+(starters, retry, failed refreshes), rename and delete, history and conversation paging, chart
+rendering and its fallback, and the Plotly translation (palette order, legends, diverging
 colours, heatmaps).
 
 ## End-to-end (`cd frontend`)
@@ -64,13 +67,27 @@ Playwright starts `backend/tests/e2e_server.py` (the real application with a scr
 the production frontend build. The main test registers, uploads the sample, checks the profile
 and rows, asks "Why did revenue decrease in Q3?", checks the grounded answer, highlighted
 figures, the rendered chart, the cited result table and the activity trail, asks a follow-up,
-reloads and finds both in History, signs out, and confirms a second user sees nothing and gets
-"not found" for the first user's dataset and conversation URLs. Two smaller tests check that
+reloads and finds both in History, follows a history link to its question, renames the
+conversation, signs out, and confirms a second user sees nothing and gets
+"not found" for the first user's dataset and conversation URLs. Another test deletes a
+conversation and a dataset and checks that the lists follow. Two smaller tests check that
 signed-out visitors are redirected to sign in, and that pages from the production build send
 the expected security headers (CSP directives without `unsafe-eval`, `X-Frame-Options`,
 `X-Content-Type-Options`, `Referrer-Policy`, no `X-Powered-By`).
 
+The tests serve the frontend on port **3100** (`E2E_WEB_PORT` to change) and the test backend on
+8000, and refuse to reuse a server that is already running, so they can't write to the app
+you have open on 3000 or call its paid model.
+
 ## Tests that need a real model
+
+The provider tests are skipped unless requested. They use the provider, model and key from the
+environment or the root `.env`, and make three API calls:
+
+```bash
+cd backend
+RUN_LIVE_LLM_TESTS=1 uv run pytest -m live_llm
+```
 
 Agent-mode evaluation (`python -m evals.run --mode agent`) calls the configured provider and
 costs money, so it is never part of CI. See [EVALUATION.md](EVALUATION.md).

@@ -30,7 +30,8 @@ computed.
   don't are flagged.
 - **Charts from results only**: the model chooses the chart's shape, while the data points are
   copied from a computed result (Plotly, with a colour-blind-checked palette and a table view).
-- **Conversations** with follow-up questions, history, cancellation, and persistence.
+- **Conversations** with follow-up questions, renaming and deletion, paginated history,
+  cancellation, retry, and persistence.
 - **Accounts** with Argon2id passwords, server-side sessions in HttpOnly cookies, CSRF
   protection, rate limits, and strict per-user isolation.
 
@@ -88,7 +89,7 @@ cp .env.example .env     # set POSTGRES_PASSWORD; set GEMINI_API_KEY to enable q
 docker compose up --build -d
 ```
 
-Open <http://localhost:3000>, create an account, upload
+Open <http://localhost:3000> (published to this machine only), create an account, upload
 [`data/samples/sales.csv`](data/samples/sales.csv) (a synthetic dataset with a planted Q3 2024
 revenue drop), and ask *"Why did revenue decrease in Q3?"*.
 
@@ -125,7 +126,7 @@ export TEST_DATABASE_URL=postgresql+psycopg://user:password@localhost:5432/ada_t
 ./scripts/check.sh       # backend lint/types/tests, tool-mode evals, API contract, frontend lint/types/tests/build
 ```
 
-About 385 backend tests (against real PostgreSQL), 84 frontend tests, a Playwright
+About 390 backend tests (against real PostgreSQL), 105 frontend tests, a Playwright
 end-to-end suite, the evaluation suite and a Docker smoke test all run in CI on every push, with
 no paid API calls. Highlights: 74 SQL-injection and sandbox-escape cases; every analytical
 operation checked against independent pandas computations; cross-user isolation on every
@@ -133,13 +134,13 @@ route, in the API and in the browser. See [docs/TESTING.md](docs/TESTING.md).
 
 ## Evaluation
 
-The evaluation suite asks 17 questions about three datasets with planted facts, with ground
+The evaluation suite asks 18 questions about three datasets with planted facts, with ground
 truth computed independently from the raw data. **Tool mode passes 14/14 cases** in CI: the
 analytical layer computes every ground-truth figure correctly. **Agent mode** (the full workflow
 with a real model, scoring numeric accuracy, tool choice, columns, grounding, chart/data
-consistency, ambiguity and unanswerable handling) is implemented and tested with a scripted
-model, but **has not been run against a live model yet**, so no answer-quality numbers are
-claimed. See [docs/EVALUATION.md](docs/EVALUATION.md).
+consistency, ambiguity and unanswerable handling, follow-up context and failure recovery) is implemented
+and tested with a scripted model. Only **one case has been smoke-tested against Gemini**; the
+full suite has not been run live, so no answer-quality numbers are claimed. See [docs/EVALUATION.md](docs/EVALUATION.md).
 
 ## Deployment
 
@@ -161,7 +162,7 @@ CI actions and a runtime dependency audit.
 |---|---|
 | Upload, profiling, auth, conversations, history | Working and tested (unit, integration, E2E) |
 | Agent workflow, tools, sandbox, charts, grounding | Working and tested with a scripted model |
-| Answer quality with a real model | **Not yet measured**: needs an API key (`evals.run --mode agent`) |
+| Answer quality with a real model | **Not yet measured**: one live smoke case only; run `evals.run --mode agent` with an API key |
 | Containers | Built and smoke-tested in CI |
 | Public deployment | **Not done**: needs a server and domain |
 

@@ -17,7 +17,7 @@ TypeScript client is generated from; CI fails if it is stale.
 - **Ownership**: a dataset, conversation or analysis that belongs to another user is reported
   as `404`, exactly like one that does not exist.
 - **Pagination**: list endpoints take `limit` (max 100) and `offset` and return
-  `{items, total, limit, offset}`.
+  `{items, total, limit, offset}`; the UI pages through conversations and history with them.
 - **Errors** always use one envelope, never stack traces, file paths or submitted values:
 
   ```json

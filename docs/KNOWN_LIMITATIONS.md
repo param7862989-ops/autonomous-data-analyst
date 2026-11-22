@@ -13,8 +13,9 @@ says why, and what would change it.
   which answers faster but less thoroughly.
 - **Not deployed.** Images and Compose are built and smoke-tested in CI, but no public
   deployment exists. See [DEPLOYMENT.md](DEPLOYMENT.md).
-- **Docker was not available on the development machine**; the container setup is verified only
-  by the CI `docker` job.
+- **Containers are tested on one machine at a time.** CI builds and smoke-tests the stack on
+  x86-64 Linux; it has also been run on Apple Silicon with Docker Desktop. The production
+  overlay has never faced the internet or a publicly trusted certificate.
 
 ## Architecture trade-offs
 
@@ -68,6 +69,8 @@ says why, and what would change it.
 - **Accounts are basic.** No email verification, password reset, multi-factor authentication,
   account deletion endpoint or admin role. Set `ALLOW_REGISTRATION=false` for private
   deployments.
+- **The local stack is local.** Compose publishes the app on 127.0.0.1 only. `FRONTEND_BIND`
+  can change that, but there is no TLS without the production overlay.
 - **A dev-only advisory remains** in the lint toolchain (`braces` via `eslint-config-next`; no
   patched release exists). It is not in the production image and only processes this
   repository's own glob patterns.

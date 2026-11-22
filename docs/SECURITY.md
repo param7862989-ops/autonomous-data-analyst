@@ -142,6 +142,8 @@ call is validated as above and can only read the current user's dataset.
 - In the production overlay Caddy terminates TLS, sets HSTS, and replaces any client-supplied
   `X-Forwarded-For`; only there does the backend trust that header.
 - CI actions are pinned to commit SHAs; Dependabot proposes grouped updates.
+- The base Compose file publishes the frontend on 127.0.0.1 only (`FRONTEND_BIND`): without TLS,
+  anyone on the same network could otherwise register and spend the server's LLM quota.
 - CI audits runtime dependencies: `pip-audit` on the locked Python runtime set and
   `npm audit --omit=dev --audit-level=high`.
 

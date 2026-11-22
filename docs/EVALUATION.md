@@ -17,7 +17,8 @@ entity is computed from the raw data with independent pandas code at evaluation 
 
 Cases cover aggregation, ranking, trend, comparison ("why did revenue decrease in Q3?"), a
 two-step follow-up chain, missing data, relationships, outliers, two unanswerable questions, an
-ambiguous question ("last quarter"), and a run under deliberately tight limits.
+ambiguous question ("last quarter"), a run under deliberately tight limits, and a run whose
+first query is made to fail.
 
 ### Two modes
 
@@ -41,7 +42,9 @@ Per case it scores:
 | `charts_consistent` | Every charted value is present in the result the chart cites |
 | `interpretation_stated` | For ambiguous questions, the plan states how it resolved the ambiguity |
 | `unanswerable_handled` | For unanswerable questions, the plan declined instead of inventing an answer |
-| `limits_respected` | Under tight limits, the run stayed within them and still answered |
+| `limits_respected` | Under tight limits, the run stayed within its tool-call and turn limits and still answered |
+| `context_preserved` | For follow-ups, every figure was computed in the earlier turns' scope (period, region) and the right entity was named, though the question restates neither |
+| `recovered` | With the first query failed on purpose, the agent ran another and still computed every figure |
 
 Reports are written to `backend/evals/results/<timestamp>-<model>.json` and `.md`.
 
@@ -56,10 +59,21 @@ GEMINI_API_KEY=... uv run python -m evals.run --mode agent --case sales-q3-decli
 ```
 
 Agent mode makes roughly 3 to 8 model calls per case (plan, tool turns, answer, possibly one
-grounding retry); 17 cases fit within Gemini's free tier rate limits if run slowly (use `--case`
-to run a few at a time if you hit 429s), or cost a few dollars with `claude-opus-5-5`. Set
+grounding retry). On a rate-limited tier, add `--pause 30` (seconds between cases) or use
+`--case` to run a few at a time. The 18 cases cost a few dollars with `claude-opus-5-5`. Set
 `LLM_PROVIDER` / `LLM_MODEL` to compare configurations, and pin an exact model id so reports
 are reproducible.
+
+With only Docker installed, run it in the backend image from the repository root (it reads the
+key from `.env`):
+
+```bash
+docker compose run --rm --no-deps \
+  -v "$PWD/backend/evals:/app/evals" -v "$PWD/data/samples:/data/samples:ro" \
+  backend python -m evals.run --mode agent --pause 30
+```
+
+On a Linux host, `backend/evals/results` must be writable by uid 10001.
 
 The harness itself is tested (`backend/tests/test_evals.py`): a correct scripted run must score
 1.0 on every applicable metric, a run with invented figures must fail `numeric_accuracy` and

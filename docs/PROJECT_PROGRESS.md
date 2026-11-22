@@ -48,6 +48,8 @@ authorization later is a common source of data leaks).
 | 20 | Dark mode | Complete | 2026-11-16 commits (see Day 20) |
 | 21 | Live Gemini run and overload fallback | Complete | 2026-11-19 commits (see Day 21) |
 | 22 | Exporting results | Complete | 2026-11-19 commits (see Day 22) |
+| 23 | Live updates | Implemented — checkpoint pending | `1af5ad7` to `002da4d`, fixed by `607163a` |
+| 24 | Product completion audit | Implemented — checkpoint pending | 2026-11-22 commits (see Day 24) |
 
 ---
 
@@ -372,6 +374,41 @@ authorization later is a common source of data leaks).
      the apostrophe stop it?
   2. Why is an export endpoint on the server riskier than building the file in the browser here?
   3. Why does the CSV start with a byte order mark?
+
+## Day 23 — Live updates
+
+- **Objective:** show an analysis's progress as it happens, without depending on polling.
+- **Learn:** Server-Sent Events and `EventSource` (Working, 30 min); connection-pool exhaustion
+  (Deep, 30 min); proxy buffering of streamed responses (Working, 20 min).
+- **Built:** `GET /api/analyses/{id}/events`, a per-process notifier, per-user stream and
+  lifetime limits, and a polling fallback in the UI.
+- **Found afterwards:** each open stream held a pooled database connection, so about ten froze
+  the whole app (fixed in `607163a`).
+- **Verified:** stream tests for progress, ownership, sign-out, limits and connection release.
+- **Checkpoint questions:**
+  1. Why does a FastAPI `yield` dependency live as long as a streaming response?
+  2. Why re-check the session on every read of the stream?
+  3. What breaks if you run two backend replicas, and what would fix it?
+
+## Day 24 — Product completion audit
+
+- **Objective:** close the gaps between the original specification and what was built.
+- **Learn:** offset versus cursor pagination (Working, 20 min); TanStack Query error states with
+  cached data (Working, 20 min); fault injection in agent evaluation (Deep, 30 min); WCAG
+  scrollable regions and nested interactive content (Awareness, 15 min).
+- **Built:** a Conversations page with rename and delete, paginated history, Retry on failed and
+  cancelled analyses, one retry of a malformed model tool turn, a failure-recovery eval case and
+  follow-up context metric, opt-in live-provider tests.
+- **Found while auditing:** history links never scrolled to their question; a failed background
+  refresh replaced a loaded page with an error; lists kept deleted items; the E2E suite would
+  reuse the real app on port 3000; Compose published that port to the local network; the chart
+  and scrolling tables failed automated accessibility checks.
+- **Verified:** regression and component tests, the E2E suite, and an axe WCAG A/AA scan of the
+  six signed-in pages in both themes at phone and desktop widths. Not verified: a live model.
+- **Checkpoint questions:**
+  1. When does offset pagination skip or repeat an item, and does it matter for this history?
+  2. Why retry a malformed tool turn in the agent but a 503 in the provider?
+  3. What does the recovery eval prove that a mocked unit test cannot, and what does it miss?
 
 ## Outstanding (needs you)
 
