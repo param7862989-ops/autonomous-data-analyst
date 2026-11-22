@@ -191,13 +191,26 @@ def test_open_streams_per_user_are_limited(db_engine: Engine, tmp_path: Path) ->
             first_events = parse(first.iter_lines())
             assert next(first_events)[0] == "run"
             with client.stream("GET", url) as second:
-                assert list(parse(second.iter_lines())) == [
-                    ("end", {"reason": "too_many_streams"})
-                ]
+                assert list(parse(second.iter_lines())) == [("end", {"reason": "too_many_streams"})]
         # The first stream's slot is released when it closes.
         with client.stream("GET", url) as third:
             third_events = parse(third.iter_lines())
             assert next(third_events)[0] == "run"
+
+
+@pytest.mark.db
+def test_an_open_stream_holds_no_database_connection(db_engine: Engine, tmp_path: Path) -> None:
+    # Streams live for minutes: one connection each would exhaust the pool within a few tabs.
+    app = stream_app(
+        tmp_path, HoldingExecutor(), event_stream_check_seconds=5, event_stream_max_seconds=10
+    )
+    with TestClient(app, headers=CSRF_HEADERS) as client:
+        run = start(client)
+        with client.stream("GET", f"/api/analyses/{run['id']}/events") as response:
+            events = parse(response.iter_lines())
+            assert next(events)[0] == "run"
+            # Waiting for the next change: nothing should be checked out.
+            assert app.state.session_factory.kw["bind"].pool.checkedout() == 0
 
 
 @pytest.mark.db

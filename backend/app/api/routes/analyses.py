@@ -162,6 +162,9 @@ def stream_analysis(
     session_factory = request.app.state.session_factory
     token = request.cookies.get(settings.session_cookie_name, "")
     user_id = user.id
+    # The request's session would otherwise live until the stream ends, pinning a pooled
+    # connection for minutes. The stream opens a short session for each read instead.
+    db.close()
 
     def load() -> tuple[EndReason | None, RunDetail | None]:
         # Re-checked on every read: signing out (or the session expiring) ends the stream.
