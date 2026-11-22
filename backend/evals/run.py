@@ -185,6 +185,8 @@ class AgentCaseReport:
     findings: list[dict[str, Any]] = field(default_factory=list)
     grounding: dict[str, Any] | None = None
     operations: list[str] = field(default_factory=list)
+    interpretation: str | None = None
+    chart_count: int = 0
 
 
 def _score(
@@ -339,9 +341,15 @@ def run_agent(
                     ),
                     grounding=outcome.grounding.model_dump() if outcome.grounding else None,
                     operations=[result.operation for result in outcome.results],
+                    interpretation=outcome.plan.interpretation if outcome.plan else None,
+                    chart_count=len(outcome.charts),
                 )
             )
-            print(f"[{case.id}] {outcome.status} {scores}", file=sys.stderr)
+            print(
+                f"[{case.id}] {outcome.status} stop={outcome.stop_reason} "
+                f"charts={len(outcome.charts)} {scores}",
+                file=sys.stderr,
+            )
     return reports
 
 

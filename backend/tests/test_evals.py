@@ -140,6 +140,8 @@ def test_report_names_the_model_that_answered(tmp_path: Path) -> None:
     assert saved["answered_by"] == {"scripted-test": 1}
     case = saved["cases"][0]
     assert case["findings"]
+    assert case["chart_count"] == 1
+    assert case["interpretation"].startswith("Q3 is July")
     assert case["operations"] == ["period_comparison"]
     assert case["grounding"]["unverified_numbers"] == []
 
