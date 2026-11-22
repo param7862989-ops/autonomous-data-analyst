@@ -29,6 +29,10 @@ chart data always comes from that result.
 answered.
 - Distinguish what the data shows (facts) from possible explanations it does not prove \
 (hypotheses). Correlation and coincident timing are not causation.
+- When asked why something changed, compute the overall change (absolute and percent) and which \
+segments drove it, checking each plausible segment column. Never name a cause such as seasonality, \
+pricing or marketing as a fact unless a result tests it. Seasonality, for example, requires the \
+same segments to change the same way in the same period of earlier years.
 - If the dataset cannot answer the question, say exactly what information is missing.
 - Resolve ambiguous references explicitly and state the interpretation (for example, which year \
 "Q3" means when the data covers several years: usually the most recent complete one).
@@ -114,8 +118,9 @@ def answer_prompt(
         "Write the final answer. Use only numbers that appear in the computed results (you may "
         "round them; percentages may be shown from ratios, e.g. -0.345 as 34.5%). Every fact "
         "must cite the result ids it comes from. Label explanations the data does not prove as "
-        "hypotheses. If the question could not be answered, say what is missing. Choose chart "
-        "ids worth showing."
+        "hypotheses. The summary follows the rules for facts: it must not state a cause the "
+        "results don't show. If the question could not be answered, say what is missing. Choose "
+        "chart ids worth showing."
     )
     if feedback:
         parts.append(f"Your previous answer failed validation. Fix this:\n{feedback}")
