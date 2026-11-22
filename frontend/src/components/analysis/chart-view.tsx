@@ -55,7 +55,8 @@ export function ChartView({ spec, source }: { spec: ChartSpec; source?: StoredRe
         ) : null}
         <div
           ref={container}
-          role="img"
+          // Not "img": Plotly puts focusable toolbar links inside, which an image would hide.
+          role="group"
           aria-label={`${spec.title}. ${spec.chart_type.replace("_", " ")} chart; the data is available in the table below.`}
           className="h-72 w-full"
         />

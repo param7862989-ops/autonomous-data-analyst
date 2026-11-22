@@ -10,11 +10,11 @@ import { formatInteger } from "@/lib/format";
 /** Counts and recent activity for the signed-in user, all read from the API. */
 export function OverviewSummary() {
   const datasets = useDatasets();
-  const conversations = useConversations();
+  const conversations = useConversations(undefined, 1);
   const history = useHistory(undefined, 5);
   const facts = [
     { label: "Datasets", value: datasets.data?.total, href: "/datasets" },
-    { label: "Conversations", value: conversations.data?.total, href: "/history" },
+    { label: "Conversations", value: conversations.data?.total, href: "/conversations" },
     { label: "Questions asked", value: history.data?.total, href: "/history" },
   ];
   const empty = datasets.data?.total === 0;

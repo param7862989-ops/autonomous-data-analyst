@@ -128,7 +128,7 @@ describe("RunCard", () => {
     expect(await screen.findByText(/Revenue fell by/, {}, { timeout: 3000 })).toBeInTheDocument();
     expect(screen.queryByText("Analysing")).not.toBeInTheDocument();
     expect(screen.getByText("Change by region")).toBeInTheDocument();
-    expect(screen.getByRole("img", { name: /Change by region/ })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: /Change by region/ })).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: "Show the computed result r1" }));
     expect(await screen.findByRole("cell", { name: "West" })).toBeInTheDocument();
@@ -197,5 +197,31 @@ describe("RunCard", () => {
     renderWithQuery(<RunCard runId="run-1" onFollowUp={vi.fn()} />);
     await screen.findByText("Analysing");
     expect(screen.queryByRole("button", { name: /Markdown report/ })).toBeNull();
+  });
+
+  it("scrolls to itself when a history link points at it", async () => {
+    window.history.replaceState(null, "", "#run-run-1");
+    const scroll = vi.spyOn(Element.prototype, "scrollIntoView");
+    mockFetch(() => jsonResponse(COMPLETED));
+    renderWithQuery(<RunCard runId="run-1" onFollowUp={vi.fn()} />);
+    const heading = await screen.findByRole("heading", { name: BASE.question });
+    await waitFor(() => expect(scroll.mock.contexts).toContain(heading.closest("article")));
+    window.history.replaceState(null, "", "/");
+  });
+
+  it("keeps the activity on screen while updates are failing", async () => {
+    let calls = 0;
+    mockFetch(() =>
+      ++calls === 1
+        ? jsonResponse({
+            ...BASE,
+            status: "running",
+            events: [event("plan", 1, "Planning analysis", "running")],
+          })
+        : new Response("down", { status: 503 }),
+    );
+    renderWithQuery(<RunCard runId="run-1" onFollowUp={vi.fn()} />);
+    expect(await screen.findByText(/Reconnecting/, {}, { timeout: 3000 })).toBeInTheDocument();
+    expect(screen.getByText("Planning analysis")).toBeInTheDocument();
   });
 });

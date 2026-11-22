@@ -5,13 +5,14 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import { ConversationHeader } from "@/components/analysis/conversation-header";
 import { QuestionComposer } from "@/components/analysis/question-composer";
 import { RunCard } from "@/components/analysis/run-card";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { useAskQuestion, useConversation, useServerConfig, isActive } from "@/lib/analyses/api";
-import { ApiError } from "@/lib/api/errors";
+import { isNotFound } from "@/lib/api/errors";
 import { type ColumnProfile, useDataset } from "@/lib/datasets/api";
 
 /** Starter questions built from the dataset's own columns. */
@@ -41,10 +42,17 @@ export default function ConversationPage() {
   const [question, setQuestion] = useState("");
   const composer = useRef<HTMLTextAreaElement>(null);
   const end = useRef<HTMLDivElement>(null);
-  const runCount = conversation.data?.runs.length ?? 0;
+  const runCount = conversation.data?.runs.length;
+  const seenRuns = useRef<number | undefined>(undefined);
 
   useEffect(() => {
-    if (runCount) end.current?.scrollIntoView({ block: "end" });
+    if (runCount === undefined) return;
+    // Follow a newly asked question, but leave the position alone when the page opens, so a
+    // link from history can land on its own question.
+    if (seenRuns.current !== undefined && runCount > seenRuns.current) {
+      end.current?.scrollIntoView({ block: "end" });
+    }
+    seenRuns.current = runCount;
   }, [runCount]);
 
   const starters = useMemo(
@@ -59,8 +67,8 @@ export default function ConversationPage() {
       </p>
     );
   }
-  if (conversation.isError) {
-    const missing = conversation.error instanceof ApiError && conversation.error.status === 404;
+  const missing = isNotFound(conversation.error);
+  if (!conversation.data || missing) {
     return (
       <div className="max-w-xl">
         <Alert
@@ -74,7 +82,7 @@ export default function ConversationPage() {
             )
           }
         >
-          {missing ? "It may have been deleted. " : `${conversation.error.message} `}
+          {missing ? "It may have been deleted. " : `${conversation.error?.message ?? ""} `}
           <Link href="/datasets" className="font-medium text-primary underline underline-offset-2">
             Go to datasets
           </Link>
@@ -110,11 +118,16 @@ export default function ConversationPage() {
       >
         <ArrowLeft size={14} aria-hidden="true" /> {data.dataset_name}
       </Link>
-      <h1 className="mt-3 text-2xl font-semibold tracking-tight break-words">{data.title}</h1>
+      <ConversationHeader id={id} title={data.title} datasetId={data.dataset_id} />
 
       <div className="mt-8 space-y-12">
         {data.runs.map((run) => (
-          <RunCard key={run.id} runId={run.id} onFollowUp={followUp} />
+          <RunCard
+            key={run.id}
+            runId={run.id}
+            onFollowUp={followUp}
+            onRetry={disabledReason || ask.isPending ? undefined : (text) => ask.mutate(text)}
+          />
         ))}
       </div>
 
@@ -142,7 +155,7 @@ export default function ConversationPage() {
         </section>
       ) : null}
 
-      <div ref={end} className="sticky bottom-0 mt-10 bg-paper pt-3 pb-4">
+      <div className="sticky bottom-0 mt-10 bg-paper pt-3 pb-4">
         <QuestionComposer
           ref={composer}
           value={question}
@@ -153,6 +166,7 @@ export default function ConversationPage() {
           error={ask.isError ? ask.error.message : null}
         />
       </div>
+      <div ref={end} />
     </div>
   );
 }

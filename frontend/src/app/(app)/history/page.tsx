@@ -13,7 +13,7 @@ export default function HistoryPage() {
         computations behind it.
       </p>
       <div className="mt-8">
-        <HistoryTable limit={100} />
+        <HistoryTable />
       </div>
     </div>
   );

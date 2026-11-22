@@ -18,7 +18,7 @@ export function DatasetList() {
       </p>
     );
   }
-  if (datasets.isError) {
+  if (!datasets.data) {
     return (
       <Alert
         tone="danger"
@@ -29,7 +29,7 @@ export function DatasetList() {
           </Button>
         }
       >
-        {datasets.error.message}
+        {datasets.error?.message}
       </Alert>
     );
   }

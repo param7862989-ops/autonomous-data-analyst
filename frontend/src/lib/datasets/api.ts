@@ -104,9 +104,12 @@ export function useDeleteDataset() {
   return useMutation({
     mutationFn: (id: string) =>
       unwrap(api.DELETE("/api/datasets/{dataset_id}", { params: { path: { dataset_id: id } } })),
-    onSuccess: (_, id) => {
-      queryClient.removeQueries({ queryKey: datasetKeys.detail(id) });
-      void queryClient.invalidateQueries({ queryKey: datasetKeys.all });
+    onSuccess: () => {
+      // Deleting a dataset also deletes its conversations and analyses. Mark all three stale
+      // without refetching, because the caller is leaving the deleted dataset's page.
+      for (const queryKey of [datasetKeys.all, ["conversations"], ["analyses"]]) {
+        void queryClient.invalidateQueries({ queryKey, refetchType: "none" });
+      }
     },
   });
 }

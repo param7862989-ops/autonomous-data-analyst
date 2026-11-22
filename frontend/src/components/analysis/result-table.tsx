@@ -34,7 +34,12 @@ export function ResultTable({ result, compact = false }: { result: StoredResult;
           ))}
         </dl>
       ) : null}
-      <div className="relative max-h-96 overflow-auto rounded-(--radius-control) border border-rule">
+      <div
+        tabIndex={0}
+        role="region"
+        aria-label={`Table: ${result.description}`}
+        className="relative max-h-96 overflow-auto rounded-(--radius-control) border border-rule"
+      >
         <table className="w-full text-sm">
           <caption className="sr-only">{result.description}</caption>
           <thead className="sticky top-0 bg-paper">

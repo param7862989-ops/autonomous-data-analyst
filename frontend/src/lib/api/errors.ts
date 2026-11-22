@@ -69,3 +69,8 @@ export const networkError = () =>
     code: "network_error",
     message: "Can't reach the server. Check your connection and try again.",
   });
+
+/** True when the server says the resource is gone (or belongs to someone else). */
+export function isNotFound(error: unknown): boolean {
+  return error instanceof ApiError && error.status === 404;
+}

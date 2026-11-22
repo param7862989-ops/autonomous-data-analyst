@@ -1,7 +1,7 @@
 "use client";
 
 import { clsx } from "clsx";
-import { Database, History, LayoutGrid, LogOut } from "lucide-react";
+import { Database, History, LayoutGrid, LogOut, MessagesSquare } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
@@ -12,6 +12,7 @@ import { useCurrentUser, useLogout } from "@/lib/auth/hooks";
 const NAV_ITEMS = [
   { href: "/", label: "Overview", Icon: LayoutGrid },
   { href: "/datasets", label: "Datasets", Icon: Database },
+  { href: "/conversations", label: "Conversations", Icon: MessagesSquare },
   { href: "/history", label: "History", Icon: History },
 ] as const;
 
@@ -39,7 +40,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <ThemeToggle className="ml-auto md:hidden" />
         </div>
         <nav aria-label="Main" className="px-2 pb-3 md:flex-1 md:px-3">
-          <ul className="flex gap-1 overflow-x-auto md:flex-col">
+          <ul className="flex flex-wrap gap-1 md:flex-col">
             {NAV_ITEMS.map(({ href, label, Icon }) => {
               const active = isActive(pathname, href);
               return (
@@ -48,13 +49,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     href={href}
                     aria-current={active ? "page" : undefined}
                     className={clsx(
-                      "flex items-center gap-2.5 whitespace-nowrap rounded-(--radius-control) px-3 py-2 text-sm",
+                      "flex items-center gap-2.5 whitespace-nowrap rounded-(--radius-control) px-2 py-2 text-sm sm:px-3",
                       active
                         ? "bg-primary-soft font-medium text-primary"
                         : "text-slate hover:bg-paper hover:text-ink",
                     )}
                   >
-                    <Icon size={16} aria-hidden="true" />
+                    {/* No icons on phones: all four links have to fit without scrolling. */}
+                    <Icon size={16} aria-hidden="true" className="hidden sm:block" />
                     {label}
                   </Link>
                 </li>

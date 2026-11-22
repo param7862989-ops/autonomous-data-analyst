@@ -2,12 +2,13 @@
 
 import { clsx } from "clsx";
 import { FileDown } from "lucide-react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { type RunDetail, isActive, useCancelRun, useRun } from "@/lib/analyses/api";
+import { isNotFound } from "@/lib/api/errors";
 import { downloadFile, runToMarkdown, safeFilename } from "@/lib/analyses/export";
 import { formatDateTime } from "@/lib/format";
 
@@ -65,11 +66,29 @@ function Evidence({ run, open, toggle }: { run: RunDetail; open: Set<string>; to
   );
 }
 
-export function RunCard({ runId, onFollowUp }: { runId: string; onFollowUp: (q: string) => void }) {
+export function RunCard({
+  runId,
+  onFollowUp,
+  onRetry,
+}: {
+  runId: string;
+  onFollowUp: (q: string) => void;
+  /** Absent when a new analysis can't start now (one is running, or analysis is unavailable). */
+  onRetry?: (question: string) => void;
+}) {
   const query = useRun(runId);
   const cancel = useCancelRun();
   const [openResults, setOpenResults] = useState<Set<string>>(new Set());
   const card = useRef<HTMLElement>(null);
+
+  // Links from history end in #run-<id>. The card doesn't exist when the browser looks for that
+  // anchor, so it scrolls itself into view once it has loaded.
+  const loaded = Boolean(query.data);
+  useEffect(() => {
+    if (loaded && window.location.hash === `#run-${runId}`) {
+      card.current?.scrollIntoView({ block: "start" });
+    }
+  }, [loaded, runId]);
 
   function toggle(resultId: string) {
     setOpenResults((current) => {
@@ -96,7 +115,7 @@ export function RunCard({ runId, onFollowUp }: { runId: string; onFollowUp: (q: 
       </p>
     );
   }
-  if (query.isError) {
+  if (!query.data || isNotFound(query.error)) {
     return (
       <Alert
         tone="danger"
@@ -107,7 +126,7 @@ export function RunCard({ runId, onFollowUp }: { runId: string; onFollowUp: (q: 
           </Button>
         }
       >
-        {query.error.message}
+        {query.error?.message}
       </Alert>
     );
   }
@@ -116,6 +135,16 @@ export function RunCard({ runId, onFollowUp }: { runId: string; onFollowUp: (q: 
   const active = isActive(run.status);
   const outcome = run.outcome;
   const sources = new Map(outcome?.results.map((r) => [r.id, r]) ?? []);
+  const retry = onRetry ? (
+    <Button
+      variant="secondary"
+      size="sm"
+      onClick={() => onRetry(run.question)}
+      aria-label={`Retry: ${run.question}`}
+    >
+      Retry
+    </Button>
+  ) : null;
   const shownCharts = outcome?.answer
     ? outcome.charts.filter((c) => outcome.answer?.chart_ids.includes(c.id))
     : (outcome?.charts ?? []);
@@ -166,16 +195,25 @@ export function RunCard({ runId, onFollowUp }: { runId: string; onFollowUp: (q: 
                 Cancel
               </Button>
             </div>
+            {query.isError ? (
+              <p role="status" className="mb-3 text-sm text-slate">
+                Can&apos;t get updates right now. Reconnecting…
+              </p>
+            ) : null}
             <ActivityTimeline events={run.events} live />
           </div>
         ) : null}
 
         {run.status === "failed" ? (
-          <Alert tone="danger" title="The analysis didn't finish">
-            {run.error_message ?? "Something went wrong."} Ask again to retry.
+          <Alert tone="danger" title="The analysis didn't finish" action={retry}>
+            {run.error_message ?? "Something went wrong."}
           </Alert>
         ) : null}
-        {run.status === "cancelled" ? <Alert tone="info">This analysis was cancelled.</Alert> : null}
+        {run.status === "cancelled" ? (
+          <Alert tone="info" action={retry}>
+            This analysis was cancelled.
+          </Alert>
+        ) : null}
         {run.status === "completed" && run.stop_reason && STOP_NOTES[run.stop_reason] ? (
           <Alert tone="info">{STOP_NOTES[run.stop_reason]}</Alert>
         ) : null}

@@ -32,7 +32,8 @@ export function RequireAuth({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (user.isError) {
+  // A failed background re-check must not replace an app that is already on screen.
+  if (user.isError && !user.data) {
     return (
       <div className="mx-auto max-w-md px-4 py-16">
         <Alert

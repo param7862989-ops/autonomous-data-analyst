@@ -1,6 +1,12 @@
 "use client";
 
-import { type QueryClient, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  type QueryClient,
+  keepPreviousData,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 
 import { api, unwrap } from "@/lib/api/client";
@@ -39,15 +45,16 @@ export function useServerConfig() {
   });
 }
 
-export function useConversations(datasetId?: string) {
+export function useConversations(datasetId?: string, limit = 50, offset = 0) {
   return useQuery({
-    queryKey: analysisKeys.conversations(datasetId),
+    queryKey: [...analysisKeys.conversations(datasetId), limit, offset],
     queryFn: () =>
       unwrap(
         api.GET("/api/conversations", {
-          params: { query: { limit: 50, ...(datasetId ? { dataset_id: datasetId } : {}) } },
+          params: { query: { limit, offset, ...(datasetId ? { dataset_id: datasetId } : {}) } },
         }),
       ),
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -67,6 +74,7 @@ function refreshAfterFinish(queryClient: QueryClient, run: RunDetail) {
   // The conversation's run summaries and the history now have a final state.
   void queryClient.invalidateQueries({ queryKey: analysisKeys.conversation(run.conversation_id) });
   void queryClient.invalidateQueries({ queryKey: ["analyses", "history"] });
+  void queryClient.invalidateQueries({ queryKey: ["conversations", "list"] });
 }
 
 /**
@@ -121,15 +129,19 @@ export function useRun(id: string) {
   return query;
 }
 
-export function useHistory(datasetId?: string, limit = 50) {
+export function useHistory(datasetId?: string, limit = 50, offset = 0) {
   return useQuery({
-    queryKey: [...analysisKeys.history(datasetId), limit],
+    queryKey: [...analysisKeys.history(datasetId), limit, offset],
     queryFn: () =>
       unwrap(
         api.GET("/api/analyses", {
-          params: { query: { limit, ...(datasetId ? { dataset_id: datasetId } : {}) } },
+          params: { query: { limit, offset, ...(datasetId ? { dataset_id: datasetId } : {}) } },
         }),
       ),
+    placeholderData: keepPreviousData,
+    // A listed run can finish while the list is on screen.
+    refetchInterval: (q) =>
+      q.state.data?.items.some((item) => isActive(item.status)) ? 5000 : false,
   });
 }
 
@@ -158,6 +170,7 @@ export function useAskQuestion(conversationId: string) {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: analysisKeys.conversation(conversationId) });
       void queryClient.invalidateQueries({ queryKey: ["conversations", "list"] });
+      void queryClient.invalidateQueries({ queryKey: ["analyses", "history"] });
     },
   });
 }
@@ -182,10 +195,28 @@ export function useDeleteConversation() {
           params: { path: { conversation_id: id } },
         }),
       ),
-    onSuccess: (_, id) => {
-      queryClient.removeQueries({ queryKey: analysisKeys.conversation(id) });
-      void queryClient.invalidateQueries({ queryKey: ["conversations"] });
-      void queryClient.invalidateQueries({ queryKey: ["analyses"] });
+    onSuccess: () => {
+      // Mark stale without refetching: the caller is leaving the deleted conversation's page,
+      // and refetching it there would flash "not found". Every view refetches when next shown.
+      void queryClient.invalidateQueries({ queryKey: ["conversations"], refetchType: "none" });
+      void queryClient.invalidateQueries({ queryKey: ["analyses"], refetchType: "none" });
+    },
+  });
+}
+
+export function useRenameConversation(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (title: string) =>
+      unwrap(
+        api.PATCH("/api/conversations/{conversation_id}", {
+          params: { path: { conversation_id: id } },
+          body: { title },
+        }),
+      ),
+    onSuccess: (conversation) => {
+      queryClient.setQueryData(analysisKeys.conversation(id), conversation);
+      void queryClient.invalidateQueries({ queryKey: ["conversations", "list"] });
     },
   });
 }

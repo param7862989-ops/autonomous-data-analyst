@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Spinner } from "@/components/ui/spinner";
 import { Tabs } from "@/components/ui/tabs";
-import { ApiError } from "@/lib/api/errors";
+import { isNotFound } from "@/lib/api/errors";
 import { useDataset, useDeleteDataset } from "@/lib/datasets/api";
 import { formatDateTime, formatInteger, formatPercent } from "@/lib/format";
 
@@ -36,8 +36,8 @@ export default function DatasetPage() {
       </p>
     );
   }
-  if (dataset.isError) {
-    const missing = dataset.error instanceof ApiError && dataset.error.status === 404;
+  const missing = isNotFound(dataset.error);
+  if (!dataset.data || missing) {
     return (
       <div className="max-w-xl">
         <Alert
@@ -51,7 +51,7 @@ export default function DatasetPage() {
             )
           }
         >
-          {missing ? "It may have been deleted." : dataset.error.message}{" "}
+          {missing ? "It may have been deleted." : dataset.error?.message}{" "}
           <Link href="/datasets" className="font-medium text-primary underline underline-offset-2">
             Back to datasets
           </Link>
