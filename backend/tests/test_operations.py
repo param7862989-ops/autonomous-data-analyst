@@ -1,12 +1,13 @@
 """Analytical correctness: every operation is checked against an independent pandas
 computation on the raw sample CSV (ground truth), not against its own SQL.
 
-Ratios (percent change, share of change, correlation) are rounded to 6 decimal places in
-results by design, so they are compared with an absolute tolerance of 1e-6."""
+Ratios (percent change, share of change, correlation) are rounded to 10 decimal places in
+results; they are compared with an absolute tolerance of 1e-6."""
 
 from __future__ import annotations
 
 import datetime as dt
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
 
 import pandas as pd
@@ -169,6 +170,30 @@ def test_period_comparison_finds_the_planted_q3_decline(
     assert min(result.table.rows, key=lambda r: r[3])[0] == "West"
     # Shares of change sum to 1 for an additive metric.
     assert sum(row[5] for row in result.table.rows) == pytest.approx(1.0, abs=1e-5)
+
+
+def test_ratios_round_correctly_when_shown_as_percentages(
+    sales_engine: AnalyticsEngine, sales_schema: DatasetSchema
+) -> None:
+    # Q3 2023 to Q3 2024 is -17.05498%: stored to 6 decimals it was shown as -17.06%.
+    result = PeriodComparisonOp(
+        date_column="order_date",
+        metric=Metric(agg="sum", column="revenue"),
+        baseline=Period(start=dt.date(2023, 7, 1), end=dt.date(2023, 9, 30)),
+        current=Period(start=dt.date(2024, 7, 1), end=dt.date(2024, 9, 30)),
+        breakdown="region",
+    ).run(sales_engine, sales_schema)
+    west = next(row for row in result.table.rows if row[0] == "West")
+
+    def as_percent(ratio: Any) -> str:
+        # Round the printed digits, as a reader of the JSON does. round() on the float would hide
+        # the bug, because the float nearest 17.055 is slightly below it.
+        percent = abs(Decimal(str(ratio))) * 100
+        return str(percent.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
+
+    assert as_percent(result.summary["pct_change"]) == "17.05"
+    assert as_percent(west[4]) == "75.53"
+    assert as_percent(west[5]) == "122.76"
 
 
 def test_period_comparison_non_additive_metric_has_no_shares(

@@ -287,6 +287,12 @@ def _round(value: float | None, digits: int = 6) -> float | None:
     return round(value, digits)
 
 
+def _ratio(value: float | None) -> float | None:
+    """Ratios keep more digits: they get rounded again when written as a percentage, and rounding
+    0.17054981 to 0.170550 first turns 17.05% into 17.06%."""
+    return _round(value, 10)
+
+
 # --- Operations ------------------------------------------------------------------------------
 
 
@@ -477,7 +483,7 @@ class PeriodComparisonOp(BaseModel):
                 c = _as_float(cur, self.metric.agg)
                 change = c - b if c is not None and b is not None else None
                 share = (
-                    _round(change / total_change)
+                    _ratio(change / total_change)
                     if additive and change is not None and total_change
                     else None
                 )
@@ -533,7 +539,7 @@ def _as_float(value: Any, agg: str) -> float | None:
 def _pct(base: float | None, change: float | None) -> float | None:
     if base is None or change is None or base == 0:
         return None
-    return _round(change / abs(base))
+    return _ratio(change / abs(base))
 
 
 class DistributionOp(BaseModel):
@@ -648,7 +654,7 @@ class CorrelationOp(BaseModel):
         n = values[0]
         matrix: dict[tuple[int, int], float | None] = {}
         for (i, j), value in zip(pairs, values[1:], strict=True):
-            matrix[(i, j)] = matrix[(j, i)] = _round(_num(value))
+            matrix[(i, j)] = matrix[(j, i)] = _ratio(_num(value))
         rows: list[list[JsonScalar]] = []
         for i, a in enumerate(self.columns):
             for j, b in enumerate(self.columns):
@@ -739,7 +745,7 @@ class OutliersOp(BaseModel):
                 "lower_bound": _round(lower),
                 "upper_bound": _round(upper),
                 "outlier_count": outlier_count,
-                "outlier_share": _round(outlier_count / count),
+                "outlier_share": _ratio(outlier_count / count),
                 "checked_values": int(count),
             },
         )
@@ -760,7 +766,7 @@ class MissingValuesOp(BaseModel):
         values = engine.execute(f"SELECT {', '.join(selects)} FROM {TABLE_NAME}").rows[0]
         total = int(values[0] or 0)
         rows: list[list[JsonScalar]] = [
-            [c, int(m or 0), _round(int(m or 0) / total) if total else 0.0]
+            [c, int(m or 0), _ratio(int(m or 0) / total) if total else 0.0]
             for c, m in zip(cols, values[1:], strict=True)
         ]
         rows.sort(key=lambda r: r[1] if isinstance(r[1], int) else 0, reverse=True)
