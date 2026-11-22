@@ -1,6 +1,6 @@
 """Provider-neutral LLM interface used by the agent.
 
-The agent only depends on this module. Provider SDKs (Anthropic today) live behind it, and
+The agent only depends on this module. Provider SDKs (Gemini, Anthropic) live behind it, and
 tests use a fake implementation, so the standard test suite never calls a paid API.
 """
 

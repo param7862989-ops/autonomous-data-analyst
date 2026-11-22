@@ -206,14 +206,11 @@ class AnalysisAgent:
     def _structured[S: (AnalysisPlan, FinalAnswer)](self, prompt: str, schema: type[S]) -> S:
         """One structured call, retried once if the output does not validate."""
         messages: list[Message] = [UserText(prompt)]
-        try:
-            reply = self.deps.provider.structured(
+        reply = _retry_bad_response(
+            lambda: self.deps.provider.structured(
                 system=self._system, messages=messages, schema=schema
             )
-        except LLMResponseError:
-            reply = self.deps.provider.structured(
-                system=self._system, messages=messages, schema=schema
-            )
+        )
         self.usage.add(reply.usage)
         return reply.value
 
@@ -281,8 +278,10 @@ class AnalysisAgent:
         key = f"act:{iteration}"
         self._emit(key, "Choosing the next analysis step", "running")
         try:
-            step = self.deps.provider.tool_step(
-                system=self._system, messages=state["transcript"], tools=self._tools
+            step = _retry_bad_response(
+                lambda: self.deps.provider.tool_step(
+                    system=self._system, messages=state["transcript"], tools=self._tools
+                )
             )
         except LLMError as error:
             return self._failed(key, "Choosing the next analysis step", error)
@@ -428,6 +427,18 @@ class AnalysisAgent:
 
     def _after_validate(self, state: AgentState) -> str:
         return "end" if state.get("status") == "completed" else "answer"
+
+
+def _retry_bad_response[R](request: Callable[[], R]) -> R:
+    """Make a model request, repeating it once if the reply is unusable (malformed, cut off).
+
+    Timeouts and overloads are not repeated here: the provider already retries those.
+    """
+    try:
+        return request()
+    except LLMResponseError:
+        logger.info("Unusable model response; asking once more")
+        return request()
 
 
 def _running_event(key: str, tool: str) -> ActivityEvent:

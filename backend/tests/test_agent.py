@@ -476,3 +476,34 @@ def test_final_answer_schema_is_strict() -> None:
         FinalAnswer.model_validate(
             grounded_answer(findings=[{"statement": "x", "kind": "maybe", "evidence": []}])
         )
+
+
+def test_a_malformed_tool_turn_is_retried_once(
+    sales_engine: AnalyticsEngine, sales_metadata: Any
+) -> None:
+    harness = Harness(
+        sales_engine,
+        sales_metadata,
+        turns=[
+            lambda call: LLMResponseError("malformed function call"),
+            tool_turn(("execute_analysis", Q3_COMPARISON)),
+            done_turn(),
+        ],
+        answers=[grounded_answer(chart_ids=[])],
+    )
+    outcome = harness.agent.run("Why did revenue decrease in Q3?")
+    assert outcome.status == "completed"
+    assert [r.id for r in outcome.results] == ["r1"]
+    assert outcome.iterations == 2  # the repeated request is not an extra step
+
+
+def test_two_malformed_tool_turns_fail_the_run(
+    sales_engine: AnalyticsEngine, sales_metadata: Any
+) -> None:
+    def malformed(call: Call) -> LLMResponseError:
+        return LLMResponseError("malformed function call")
+
+    harness = Harness(sales_engine, sales_metadata, turns=[malformed, malformed])
+    outcome = harness.agent.run("Why did revenue decrease in Q3?")
+    assert (outcome.status, outcome.error_code) == ("failed", "llm_bad_response")
+    assert len([c for c in harness.provider.calls if c.kind == "tool_step"]) == 2
