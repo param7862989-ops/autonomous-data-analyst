@@ -156,6 +156,23 @@ causes, names containing digits are no longer read as figures, the Q3 case requi
 causes, and `charts_consistent` skips answers without charts. Scores from later runs are
 therefore not directly comparable with this table.
 
+### Re-run of `sales-q3-decline`, 2026-11-22 (commit `d3a483f`, `gemini-3.5-flash-lite`)
+
+One run, to check the first prompt fix. The false seasonal cause was gone and both planted causes
+were named, but the fix made three things worse:
+
+- It compared Q3 2024 with Q3 2023 instead of Q2 2024, so `numeric_accuracy` and
+  `computed_correctly` fell from 0.667 to 0.333. The new sentence about earlier years probably
+  steered it there.
+- It broke down every segment column one call per turn and stopped at the step limit.
+- It had no turns left for a chart.
+
+The figures were right for that comparison except three percentages, each 0.01 of a point high
+because ratios were rounded twice (fixed; grounding tolerates differences that small). The
+prompt now fixes the default comparison period and asks for a few breakdowns in one turn, then a chart.
+**That change has not been measured.** A single run cannot show that a prompt works: repeat the
+case at least three times, then re-run the suite.
+
 ## Known failure modes (expected, to watch for in agent runs)
 
 - **Ambiguous time references**: "last quarter" could mean the latest quarter in the data

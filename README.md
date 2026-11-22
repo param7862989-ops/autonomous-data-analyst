@@ -141,7 +141,8 @@ with a real model, scoring numeric accuracy, tool choice, columns, grounding, ch
 consistency, ambiguity and unanswerable handling, follow-up context and failure recovery) is implemented
 and tested with a scripted model. In one live run (2026-11-22, `gemini-3.5-flash-lite` as the
 fallback) all 18 cases completed, with 0.978 numeric accuracy and 0.938 grounded. Manual review
-found one false causal explanation that the metrics missed. See [docs/EVALUATION.md](docs/EVALUATION.md).
+found one false causal explanation that the metrics missed; the prompt fix for it is still being
+evaluated. See [docs/EVALUATION.md](docs/EVALUATION.md).
 
 ## Deployment
 
