@@ -405,6 +405,10 @@ authorization later is a common source of data leaks).
   and scrolling tables failed automated accessibility checks.
 - **Verified:** regression and component tests, the E2E suite, and an axe WCAG A/AA scan of the
   six signed-in pages in both themes at phone and desktop widths. Not verified: a live model.
+- **Found in the first full live evaluation:** a false cause scored as correct, digits in
+  product names flagged as invented figures, and reports named after the requested model instead
+  of the one that answered. Fixing those exposed that `scripts/check.sh` exited 0 when ruff,
+  format, evals, ESLint, tsc or the build failed (`&&` lists under `set -e`); CI was unaffected.
 - **Checkpoint questions:**
   1. When does offset pagination skip or repeat an item, and does it matter for this history?
   2. Why retry a malformed tool turn in the agent but a 503 in the provider?
@@ -412,7 +416,8 @@ authorization later is a common source of data leaks).
 
 ## Outstanding (needs you)
 
-- Run the full agent-mode suite (`uv run python -m evals.run --mode agent`) when
-  `gemini-3.8-flash` is not overloaded, and record the aggregate in EVALUATION.md.
+- The first full agent-mode run (2026-11-22) measured the fallback model; see EVALUATION.md.
+  Re-run `sales-q3-decline` to check the prompt fix, then the full suite when `gemini-3.8-flash`
+  is not overloaded.
 - A server and domain, to deploy with the production overlay and run `scripts/smoke_test.sh`.
 - Reviewing the open Dependabot PRs (#3, #7, #10, #11, #15, #17); #10 and #11 are major upgrades.

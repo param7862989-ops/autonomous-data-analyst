@@ -39,7 +39,7 @@ Per case it scores:
 | `tool_selection` | A sensible operation was used for the question type |
 | `column_identification` | Share of required columns that the plan or tool inputs used |
 | `grounded` | The grounding check passed: every figure in the answer matches a computed number, every cited id exists |
-| `charts_consistent` | Every charted value is present in the result the chart cites |
+| `charts_consistent` | Every charted value is present in the result the chart cites (not scored when there is no chart) |
 | `interpretation_stated` | For ambiguous questions, the plan states how it resolved the ambiguity |
 | `unanswerable_handled` | For unanswerable questions, the plan declined instead of inventing an answer |
 | `limits_respected` | Under tight limits, the run stayed within its tool-call and turn limits and still answered |
@@ -114,8 +114,47 @@ Found by running it live: retrying the overloaded main model three times (about 
 with no computations. The main model is no longer retried on 429/503/504 when a fallback is
 configured.
 
-Still to do: run the full suite (`--mode agent` without `--case`) when the main model is
-available and record the aggregate here.
+### Agent mode: full suite, 2026-11-22 (commit `185f003`)
+
+All 18 cases completed. `gemini-3.8-flash` was requested but returned 503/504 in every case, so
+**every final answer was written by `gemini-3.5-flash-lite`**. These figures describe the
+fallback model. (That run's report file carries the requested model's name; reports now record
+the model that answered.)
+
+| Metric | Score | Cases |
+|---|---|---|
+| `completed` | 1.000 | 18 |
+| `numeric_accuracy` | 0.978 | 15 |
+| `computed_correctly` | 0.978 | 15 |
+| `entity_accuracy` | 1.000 | 6 |
+| `tool_selection` | 1.000 | 16 |
+| `column_identification` | 1.000 | 14 |
+| `grounded` | 0.938 | 16 |
+| `charts_consistent` | 1.000 | 16, including answers with no chart |
+| `interpretation_stated` | 1.000 | 2 |
+| `unanswerable_handled` | 1.000 | 2 |
+| `context_preserved` | 1.000 | 2 |
+| `limits_respected` | 1.000 | 1 |
+| `recovered` | 1.000 | 1 |
+
+Mean 47 s per case (34 s without the two that waited on a 504), 447,721 input and 20,228 output
+tokens. It is a single run on three synthetic datasets, with one or two cases behind several
+metrics.
+
+Manual review of the 18 saved summaries against the raw data:
+
+- The figures in the summaries are correct. (Findings were not saved by that version.)
+- **`sales-q3-decline` gave a wrong cause and was not penalised for it.** It called the fall a
+  "sharp seasonal drop". The planted causes are West and Standing Desk, and both rose in Q3
+  2023. It also never computed the -34.49% change, which did cost it a third of two metrics.
+- `sales-q3-follow-up-products` failed `grounded`. The check treated the 27 in "Monitor 27in" as
+  an invented figure, which is the likely cause; the flagged text was not saved, so it is not
+  certain.
+
+Changed afterwards, and **not yet re-measured against a live model**: the prompt forbids untested
+causes, names containing digits are no longer read as figures, the Q3 case requires both planted
+causes, and `charts_consistent` skips answers without charts. Scores from later runs are
+therefore not directly comparable with this table.
 
 ## Known failure modes (expected, to watch for in agent runs)
 
@@ -126,6 +165,8 @@ available and record the aggregate here.
 - **Derived figures**: a model that computes a percentage in its head (instead of using the
   computed `pct_change`) produces a figure the grounding check cannot verify; it is flagged, not
   silently accepted.
+- **Plausible but false causes**: no metric reads causal claims. An answer can state a cause the
+  data contradicts with every figure correct, so read the "why" answers in each report.
 - **Correct numbers, wrong attribution**: the grounding check confirms a figure exists in the
   results, not that it is attributed to the right entity. `entity_accuracy` and manual review
   of reports cover this partially.

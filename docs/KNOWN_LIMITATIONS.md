@@ -5,9 +5,10 @@ says why, and what would change it.
 
 ## Not verified
 
-- **Live-model evaluation is only a smoke test so far.** One case has been run against Gemini
-  (completed, grounded, 2 of 3 figures stated); the full suite has not yet been run against a
-  live model, so overall answer quality is unmeasured. See [EVALUATION.md](EVALUATION.md).
+- **Live-model evaluation is one run of 18 synthetic cases.** It measured the fallback model
+  (`gemini-3.5-flash-lite`), because `gemini-3.8-flash` was unavailable in every case; the main
+  model is unmeasured, and so are the prompt changes made after that run. See
+  [EVALUATION.md](EVALUATION.md).
 - **Gemini model availability varies.** On the free tier the newest Flash models are sometimes
   overloaded; the provider then falls back to `GEMINI_FALLBACK_MODEL` for the rest of the run,
   which answers faster but less thoroughly.
@@ -45,6 +46,9 @@ says why, and what would change it.
   Questions needing custom Python (regressions, forecasting, clustering) are answered as far as
   SQL and the operations allow, or reported as not supported. This is a deliberate security
   choice: running model-written code safely needs a separate sandbox.
+- **Causes are not checked.** Grounding verifies figures, not explanations. In the live run an
+  answer called a planted drop "seasonal", which the data contradicts, and passed. The prompt now
+  forbids untested causes, but nothing enforces it.
 - **Grounding is heuristic.** The check confirms each stated figure matches a computed number
   (allowing for rounding), not that it is attributed to the right thing; it also skips years
   and small integers. Unverified figures are flagged in the UI, not removed.

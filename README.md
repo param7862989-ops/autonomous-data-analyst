@@ -126,7 +126,7 @@ export TEST_DATABASE_URL=postgresql+psycopg://user:password@localhost:5432/ada_t
 ./scripts/check.sh       # backend lint/types/tests, tool-mode evals, API contract, frontend lint/types/tests/build
 ```
 
-About 390 backend tests (against real PostgreSQL), 105 frontend tests, a Playwright
+About 395 backend tests (against real PostgreSQL), 106 frontend tests, a Playwright
 end-to-end suite, the evaluation suite and a Docker smoke test all run in CI on every push, with
 no paid API calls. Highlights: 74 SQL-injection and sandbox-escape cases; every analytical
 operation checked against independent pandas computations; cross-user isolation on every
@@ -139,8 +139,9 @@ truth computed independently from the raw data. **Tool mode passes 14/14 cases**
 analytical layer computes every ground-truth figure correctly. **Agent mode** (the full workflow
 with a real model, scoring numeric accuracy, tool choice, columns, grounding, chart/data
 consistency, ambiguity and unanswerable handling, follow-up context and failure recovery) is implemented
-and tested with a scripted model. Only **one case has been smoke-tested against Gemini**; the
-full suite has not been run live, so no answer-quality numbers are claimed. See [docs/EVALUATION.md](docs/EVALUATION.md).
+and tested with a scripted model. In one live run (2026-11-22, `gemini-3.5-flash-lite` as the
+fallback) all 18 cases completed, with 0.978 numeric accuracy and 0.938 grounded. Manual review
+found one false causal explanation that the metrics missed. See [docs/EVALUATION.md](docs/EVALUATION.md).
 
 ## Deployment
 
@@ -162,7 +163,7 @@ CI actions and a runtime dependency audit.
 |---|---|
 | Upload, profiling, auth, conversations, history | Working and tested (unit, integration, E2E) |
 | Agent workflow, tools, sandbox, charts, grounding | Working and tested with a scripted model |
-| Answer quality with a real model | **Not yet measured**: one live smoke case only; run `evals.run --mode agent` with an API key |
+| Answer quality with a real model | Measured once on 18 synthetic cases with the fallback model; main model **not yet measured** |
 | Containers | Built and smoke-tested in CI |
 | Public deployment | **Not done**: needs a server and domain |
 

@@ -16,7 +16,7 @@ provider that implements the same interface.
 
 ```bash
 export TEST_DATABASE_URL=postgresql+psycopg://user:password@localhost:5432/ada_test
-uv run pytest            # ~390 tests
+uv run pytest            # ~395 tests
 uv run pytest -k sql_guard
 ```
 
@@ -43,7 +43,7 @@ truncate every table after each test. Without `TEST_DATABASE_URL` they are skipp
 ## Frontend (`cd frontend`)
 
 ```bash
-npm test                 # Vitest, 105 tests
+npm test                 # Vitest, 106 tests
 npm run lint && npm run typecheck
 ```
 
