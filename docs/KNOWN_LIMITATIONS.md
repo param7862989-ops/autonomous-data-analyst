@@ -7,11 +7,12 @@ says why, and what would change it.
 
 - **Live-model evaluation is one run of 18 synthetic cases.** It measured the fallback model
   (`gemini-3.5-flash-lite`), because `gemini-3.8-flash` was unavailable in every case; the main
-  model is unmeasured, and so are the prompt changes made after that run. See
+  model is unmeasured. The prompt changes made after that run were re-run on three cases only. See
   [EVALUATION.md](EVALUATION.md).
 - **Gemini model availability varies.** On the free tier the newest Flash models are sometimes
   overloaded; the provider then falls back to `GEMINI_FALLBACK_MODEL` for the rest of the run,
-  which answers faster but less thoroughly.
+  which answers faster but less thoroughly. If `LLM_MODEL` is the fallback model there is no
+  fallback: an overload that outlasts the retries fails the question (1 of 9 in the last check).
 - **Not deployed.** Images and Compose are built and smoke-tested in CI, but no public
   deployment exists. See [DEPLOYMENT.md](DEPLOYMENT.md).
 - **Containers are tested on one machine at a time.** CI builds and smoke-tests the stack on
@@ -48,7 +49,8 @@ says why, and what would change it.
   choice: running model-written code safely needs a separate sandbox.
 - **Causes are not checked.** Grounding verifies figures, not explanations. In the live run an
   answer called a planted drop "seasonal", which the data contradicts, and passed. The prompt now
-  forbids untested causes, but nothing enforces it.
+  forbids untested causes, but nothing enforces it: in a later check two of three hypotheses,
+  though labelled as such, were still worded as certainties ("was driven by").
 - **Grounding is heuristic.** The check confirms each stated figure matches a computed number
   (allowing for rounding), not that it is attributed to the right thing; it also skips years
   and small integers. Unverified figures are flagged in the UI, not removed.

@@ -34,7 +34,7 @@ Per case it scores:
 |---|---|
 | `completed` | The run finished with an answer |
 | `numeric_accuracy` | Share of ground-truth figures stated in the answer (allowing written rounding and ratio-as-percent) |
-| `computed_correctly` | Share of ground-truth figures present in some computed result (tool use was right even if the prose omits it) |
+| `computed_correctly` | Share of ground-truth figures present in some computed result, a ratio also as a percentage (tool use was right even if the prose omits it) |
 | `entity_accuracy` | The answer names the right region / product / month / channel |
 | `tool_selection` | A sensible operation was used for the question type |
 | `column_identification` | Share of required columns that the plan or tool inputs used |
@@ -170,8 +170,35 @@ were named, but the fix made three things worse:
 The figures were right for that comparison except three percentages, each 0.01 of a point high
 because ratios were rounded twice (fixed; grounding tolerates differences that small). The
 prompt now fixes the default comparison period and asks for a few breakdowns in one turn, then a chart.
-**That change has not been measured.** A single run cannot show that a prompt works: repeat the
-case at least three times, then re-run the suite.
+A single run cannot show that a prompt works, so the next check ran three times.
+
+### Q3 chain, three runs, 2026-11-22 (commit `f53c40b`, `gemini-3.5-flash-lite`)
+
+Each run asked `sales-q3-decline` and its two follow-ups. Scores are as reported at that commit.
+
+| Case | Completed | Numeric accuracy | Computed correctly | Entities | Context preserved | Chart |
+|---|---|---|---|---|---|---|
+| `sales-q3-decline` | 3/3 | 1.000 | 0.889 | 1.000 | n/a | 3/3 |
+| `sales-q3-follow-up-region` | 3/3 | 1.000 | 1.000 | 1.000 | 1.000 | 3/3 |
+| `sales-q3-follow-up-products` | 2/3 | 0.667 | 1.000 | 0.667 | 0.667 | 3/3 |
+
+- **The second prompt fix held in all three runs**: Q2 2024 was the comparison period, no run
+  hit the step limit, and none blamed seasonality.
+- **One of the nine answers failed** on a 503 from Gemini while it was being written, after the
+  right figures were computed. With `LLM_MODEL` set to the fallback model there is nothing to
+  fall back to, only the SDK's retries.
+- The figures in the eight completed answers, summaries and findings, match the raw CSV to the
+  precision written.
+- **Two of the three hypotheses were worded as certainties** ("was driven by" demand, marketing
+  or inventory, none of which is in the data). They were labelled as hypotheses, which the UI
+  shows separately, and no metric penalises the wording.
+- The 0.889 is probably a scorer bug. One run used SQL, and `computed_correctly` accepted a change
+  only as a ratio (-0.3449), while grounding and `numeric_accuracy` also accept a percentage
+  (-34.49). Results are not saved in reports, so that run's value can't be confirmed. The scorer
+  now accepts both forms, so later `computed_correctly` scores can be higher for that reason
+  alone.
+
+The full suite has not been re-run with this prompt.
 
 ## Known failure modes (expected, to watch for in agent runs)
 

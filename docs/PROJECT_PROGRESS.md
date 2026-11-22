@@ -417,7 +417,7 @@ authorization later is a common source of data leaks).
 ## Outstanding (needs you)
 
 - The first full agent-mode run (2026-11-22) measured the fallback model; see EVALUATION.md.
-  The first prompt fix regressed `sales-q3-decline`; run the Q3 chain three times to check the
-  second, then the full suite (and again when `gemini-3.8-flash` is not overloaded).
+  The second prompt fix held in three runs of the Q3 chain (one answer lost to a 503); next is
+  the full suite (and again when `gemini-3.8-flash` is not overloaded).
 - A server and domain, to deploy with the production overlay and run `scripts/smoke_test.sh`.
 - Reviewing the open Dependabot PRs (#3, #7, #10, #11, #15, #17); #10 and #11 are major upgrades.
