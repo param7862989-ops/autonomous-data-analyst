@@ -116,7 +116,22 @@ test("upload, profile, analyse, follow up, revisit, and isolation between users"
   await expect(page.getByRole("link", { name: /Which products drove the decline/ })).toBeVisible();
   await page.reload();
   await page.getByRole("link", { name: "Why did revenue decrease in Q3?" }).click();
-  await expect(page).toHaveURL(new RegExp(conversationUrl.split("localhost:3000")[1]));
+  await expect(page).toHaveURL(new RegExp(new URL(conversationUrl).pathname));
+  await expect(page.locator("article")).toHaveCount(2);
+
+  // A history link lands on its own question, not the top of the conversation.
+  await page.goto("/history");
+  await page.getByRole("link", { name: /Which products drove the decline/ }).click();
+  const secondQuestion = page.locator("article").nth(1).getByRole("heading").first();
+  await expect(secondQuestion).toBeInViewport();
+
+  // Rename from the conversation; the list shows the new title.
+  await page.getByRole("button", { name: "Rename" }).click();
+  await page.getByLabel("Conversation title").fill("Q3 revenue review");
+  await page.getByRole("button", { name: "Save" }).click();
+  await expect(page.getByRole("heading", { name: "Q3 revenue review", level: 1 })).toBeVisible();
+  await page.getByRole("link", { name: "Conversations" }).click();
+  await page.getByRole("link", { name: "Q3 revenue review" }).click();
   await expect(page.locator("article")).toHaveCount(2);
 
   // Sign out, then a different user cannot see or open any of it.
@@ -134,5 +149,36 @@ test("upload, profile, analyse, follow up, revisit, and isolation between users"
   await expect(intruder.getByText("Conversation not found")).toBeVisible();
   await intruder.goto("/history");
   await expect(intruder.getByText("No analyses yet")).toBeVisible();
+  await intruder.goto("/conversations");
+  await expect(intruder.getByText("No conversations yet")).toBeVisible();
   await otherContext.close();
+});
+
+test("deleting a conversation, then its dataset, removes them from every list", async ({ page }) => {
+  await register(page, uniqueEmail("cleanup"));
+  await page.getByRole("link", { name: "Datasets" }).first().click();
+  await page.locator('input[type="file"]').setInputFiles(SAMPLE);
+  await page.getByLabel("Name (optional)").fill("Cleanup sales");
+  await page.getByRole("button", { name: "Upload" }).click();
+  await page.getByRole("button", { name: "Ask a question" }).click();
+  await expect(page).toHaveURL(/\/conversations\/[0-9a-f-]{36}$/);
+
+  await page.getByRole("button", { name: "Delete", exact: true }).click();
+  await page.getByRole("button", { name: "Delete conversation" }).click();
+  await expect(page).toHaveURL(/\/datasets\/[0-9a-f-]{36}$/);
+  await expect(page.getByText("No questions asked yet")).toBeVisible();
+
+  await page.getByRole("button", { name: "Ask a question" }).click();
+  await expect(page).toHaveURL(/\/conversations\/[0-9a-f-]{36}$/);
+  await page.getByRole("link", { name: "Conversations", exact: true }).click();
+  // By role: Next's route announcer repeats page titles as plain text.
+  await expect(page.getByRole("link", { name: "Analysis of Cleanup sales" })).toBeVisible();
+
+  await page.getByRole("link", { name: "Datasets", exact: true }).click();
+  await page.getByRole("link", { name: "Cleanup sales", exact: true }).click();
+  await page.getByRole("button", { name: "Delete", exact: true }).click();
+  await page.getByRole("button", { name: "Delete dataset" }).click();
+  await expect(page.getByText("No datasets yet")).toBeVisible();
+  await page.getByRole("link", { name: "Conversations", exact: true }).click();
+  await expect(page.getByText("No conversations yet")).toBeVisible();
 });

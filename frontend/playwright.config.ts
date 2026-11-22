@@ -7,6 +7,10 @@ import { defineConfig, devices } from "@playwright/test";
  *
  * Requires E2E_DATABASE_URL (a disposable PostgreSQL database) and a prior `npm run build`.
  */
+// Not 3000: that is where `docker compose` and `npm run dev` serve the real app, and the tests
+// must never attach to it (they would write to its database and call its paid model).
+const webPort = Number(process.env.E2E_WEB_PORT ?? 3100);
+const webUrl = `http://localhost:${webPort}`;
 const databaseUrl = process.env.E2E_DATABASE_URL;
 const storageDir = process.env.E2E_STORAGE_DIR ?? "../backend/.e2e-storage";
 
@@ -20,7 +24,7 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? [["list"], ["html", { open: "never" }]] : "list",
   use: {
-    baseURL: "http://localhost:3000",
+    baseURL: webUrl,
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
   },
@@ -31,20 +35,20 @@ export default defineConfig({
       cwd: "../backend",
       url: "http://localhost:8000/api/health/ready",
       timeout: 120_000,
-      reuseExistingServer: !process.env.CI,
+      reuseExistingServer: false,
       env: {
         ...(databaseUrl ? { DATABASE_URL: databaseUrl } : {}),
         STORAGE_DIR: storageDir,
         ENVIRONMENT: "test",
-        ALLOWED_ORIGINS: "http://localhost:3000",
+        ALLOWED_ORIGINS: webUrl,
       },
     },
     {
       command: "npm run start",
-      url: "http://localhost:3000/login",
+      url: `${webUrl}/login`,
       timeout: 60_000,
-      reuseExistingServer: !process.env.CI,
-      env: { PORT: "3000", HOSTNAME: "localhost" },
+      reuseExistingServer: false,
+      env: { PORT: String(webPort), HOSTNAME: "localhost" },
     },
   ],
 });
