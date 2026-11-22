@@ -7,10 +7,10 @@ result. This measures the correctness of the analytical layer.
 Agent mode (real LLM, costs money): the full workflow answers each question; the report scores
 task success, numeric accuracy of the answer, whether the computed results hold the truth, tool
 choice, column identification, entity mentions, grounding, chart/data consistency,
-unanswerable and ambiguous handling, follow-up context and limit enforcement.
+unanswerable and ambiguous handling, follow-up context, failure recovery and limit enforcement.
 
     uv run python -m evals.run --mode tools
-    ANTHROPIC_API_KEY=... uv run python -m evals.run --mode agent [--case ID ...]
+    GEMINI_API_KEY=... uv run python -m evals.run --mode agent [--case ID ...] [--pause SECONDS]
 """
 
 from __future__ import annotations
@@ -34,7 +34,13 @@ from app.agent.graph import AgentDeps, AgentLimits, AnalysisAgent
 from app.agent.llm.base import LLMProvider
 from app.agent.schemas import AgentOutcome, StoredResult
 from app.agent.tools import ToolExecutor
-from app.analytics.engine import AnalyticsEngine, EngineLimits
+from app.analytics.engine import (
+    AnalyticsEngine,
+    AnalyticsError,
+    EngineLimits,
+    QueryEngine,
+    TableResult,
+)
 from app.analytics.isolation import IsolatedEngine
 from app.analytics.operations import AnalysisOperation
 from app.datasets.inference import infer_table
@@ -132,6 +138,29 @@ def run_tools(cases: list[Case]) -> list[ToolCaseReport]:
 # --- Agent mode ------------------------------------------------------------------------------
 
 
+class FailFirstQuery:
+    """Wraps an engine and fails its first query, to check that the agent recovers."""
+
+    def __init__(self, engine: QueryEngine) -> None:
+        self._engine = engine
+        self.triggered = False
+
+    def _fail_once(self) -> None:
+        if not self.triggered:
+            self.triggered = True
+            raise AnalyticsError(
+                "The query failed temporarily. Run it again.", code="injected_failure"
+            )
+
+    def execute(self, sql: str, params: list[Any] | None = None) -> TableResult:
+        self._fail_once()
+        return self._engine.execute(sql, params)
+
+    def count_rows(self) -> int:
+        self._fail_once()
+        return self._engine.count_rows()
+
+
 @dataclass
 class AgentCaseReport:
     id: str
@@ -149,7 +178,7 @@ class AgentCaseReport:
 
 
 def _score(
-    case: Case, outcome: AgentOutcome, frame: Any, known: set[str]
+    case: Case, outcome: AgentOutcome, frame: Any, known: set[str], *, fault_hit: bool = False
 ) -> tuple[dict[str, float | None], list[str]]:
     scores: dict[str, float | None] = {}
     notes: list[str] = []
@@ -206,20 +235,37 @@ def _score(
     scores["grounded"] = 1.0 if outcome.grounding is not None and outcome.grounding.passed else 0.0
     scores["charts_consistent"] = 1.0 if charts_consistent(outcome) else 0.0
     if case.limits:
-        within = outcome.tool_calls <= case.limits.get("max_tool_calls", 10**6)
+        within = outcome.tool_calls <= case.limits.get(
+            "max_tool_calls", 10**6
+        ) and outcome.iterations <= case.limits.get("max_iterations", 10**6)
         scores["limits_respected"] = 1.0 if within and outcome.status == "completed" else 0.0
+    if case.follow_up_of:
+        # A follow-up never restates the period or segment; both must come from the history.
+        in_scope = scores.get("computed_correctly", 1.0) == 1.0
+        named = scores.get("entity_accuracy", 1.0) == 1.0
+        scores["context_preserved"] = 1.0 if in_scope and named else 0.0
+    if case.fail_first_query:
+        recovered = fault_hit and bool(scores["completed"]) and scores["computed_correctly"] == 1.0
+        scores["recovered"] = 1.0 if recovered else 0.0
+        if not fault_hit:
+            notes.append("No query ran, so the injected failure was never hit.")
     return scores, notes
 
 
 def run_agent(
-    cases: list[Case], provider_factory: Callable[[], LLMProvider]
+    cases: list[Case],
+    provider_factory: Callable[[], LLMProvider],
+    *,
+    pause_seconds: float = 0.0,
 ) -> list[AgentCaseReport]:
     reports: list[AgentCaseReport] = []
     outcomes: dict[str, AgentOutcome] = {}
     frames = datasets.frames()
     with tempfile.TemporaryDirectory() as tmp:
         loaded = {name: load_dataset(name, Path(tmp)) for name in {c.dataset for c in cases}}
-        for case in cases:
+        for index, case in enumerate(cases):
+            if index and pause_seconds:
+                time.sleep(pause_seconds)
             data = loaded[case.dataset]
             context = data.context(case.dataset)
             history: list[PriorTurn] = []
@@ -242,10 +288,13 @@ def run_agent(
             with IsolatedEngine(
                 data.parquet, EngineLimits(), address_space_bytes=2 * 1024**3
             ) as engine:
+                faulty = FailFirstQuery(engine) if case.fail_first_query else None
                 agent = AnalysisAgent(
                     AgentDeps(
                         provider=provider,
-                        executor=ToolExecutor(engine=engine, context=context, profile=data.profile),
+                        executor=ToolExecutor(
+                            engine=faulty or engine, context=context, profile=data.profile
+                        ),
                         context=context,
                         history=history,
                         limits=AgentLimits(**case.limits) if case.limits else AgentLimits(),
@@ -255,7 +304,8 @@ def run_agent(
             elapsed = time.monotonic() - started
             outcomes[case.id] = outcome
             known = {c.name for c in context.columns}
-            scores, notes = _score(case, outcome, frames[case.dataset], known)
+            fault_hit = faulty is not None and faulty.triggered
+            scores, notes = _score(case, outcome, frames[case.dataset], known, fault_hit=fault_hit)
             reports.append(
                 AgentCaseReport(
                     id=case.id,
@@ -321,6 +371,9 @@ def main() -> None:
     parser.add_argument("--mode", choices=["tools", "agent"], required=True)
     parser.add_argument("--case", action="append", help="Run only these case ids.")
     parser.add_argument("--output", type=Path)
+    parser.add_argument(
+        "--pause", type=float, default=0.0, help="Seconds between agent cases (for rate limits)."
+    )
     args = parser.parse_args()
     cases = [CASES_BY_ID[c] for c in args.case] if args.case else CASES
 
@@ -346,7 +399,9 @@ def main() -> None:
             wanted.add(chain)
             chain = CASES_BY_ID[chain].follow_up_of
     ordered = [c for c in CASES if c.id in wanted]
-    reports = run_agent(ordered, lambda: provider_from_settings(settings))
+    reports = run_agent(
+        ordered, lambda: provider_from_settings(settings), pause_seconds=max(args.pause, 0.0)
+    )
     path = write_report(settings.resolved_llm_model, reports, args.output)
     print(json.dumps(aggregate(reports), indent=2))
     print(f"Report: {path}")

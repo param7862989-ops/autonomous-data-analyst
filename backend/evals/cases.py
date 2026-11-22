@@ -42,6 +42,8 @@ class Case:
     # A typed operation an analyst would run; checked against the truths in tool mode.
     reference: dict[str, Any] | None = None
     limits: dict[str, Any] = field(default_factory=dict)
+    # The engine fails the run's first query; the agent has to notice and recover.
+    fail_first_query: bool = False
 
 
 def _between(frame: Frame, column: str, start: str, end: str) -> Frame:
@@ -378,6 +380,18 @@ CASES: list[Case] = [
         category="limits",
         expected_operations=("period_comparison", "time_series", "aggregate", "sql"),
         limits={"max_iterations": 1, "max_tool_calls": 1},
+    ),
+    Case(
+        id="sales-q3-decline-failed-query",
+        dataset="sales",
+        question="How much revenue did we make in Q2 2024 and in Q3 2024?",
+        category="recovery",
+        truths=(
+            Truth("Q2 2024 revenue", lambda f: _q2(f)["Revenue"].sum()),
+            Truth("Q3 2024 revenue", lambda f: _q3(f)["Revenue"].sum()),
+        ),
+        expected_operations=("period_comparison", "time_series", "aggregate", "sql"),
+        fail_first_query=True,
     ),
 ]
 
