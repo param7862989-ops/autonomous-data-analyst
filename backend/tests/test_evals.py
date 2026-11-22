@@ -11,8 +11,11 @@ import pytest
 
 from app.agent.llm.base import AssistantTurn, ToolResults
 from app.agent.llm.fake import Call, FakeProvider, done_turn, tool_turn
+from app.agent.schemas import StoredResult
+from app.analytics.engine import TableResult
 from evals.cases import CASES, CASES_BY_ID
 from evals.run import aggregate, run_agent, run_tools, write_report
+from evals.scoring import result_contains
 from tests.scripted import COMPARISON, sales_provider
 
 
@@ -160,3 +163,25 @@ def test_an_answer_without_charts_gets_no_chart_score() -> None:
 
     report = run_agent([CASES_BY_ID["sales-q3-decline"]], chartless)[0]
     assert "charts_consistent" not in report.scores
+
+
+@pytest.mark.parametrize(
+    ("value", "percent", "found"),
+    [
+        (-0.344878, True, True),
+        (-34.4878, True, True),
+        (-34.4878, False, False),
+        (-17.05, True, False),
+        (-3448.78, True, False),
+    ],
+)
+def test_a_ratio_may_be_computed_as_a_percentage(value: float, percent: bool, found: bool) -> None:
+    # SQL often returns 100 * change; grounding and the text check already accept that form.
+    result = StoredResult(
+        id="r1",
+        tool="execute_sql",
+        operation="sql",
+        description="change",
+        table=TableResult(columns=[], rows=[[value]], row_count=1, truncated=False),
+    )
+    assert result_contains([result], -0.344878, percent=percent, tolerance=0.01) is found

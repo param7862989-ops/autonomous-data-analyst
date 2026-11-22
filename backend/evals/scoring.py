@@ -26,15 +26,20 @@ def text_states(text: str, truth: float, *, percent: bool, tolerance: float) -> 
     return False
 
 
-def result_contains(results: list[StoredResult], truth: float, *, tolerance: float) -> bool:
-    """True if any computed result holds the figure (or its magnitude)."""
+def result_contains(
+    results: list[StoredResult], truth: float, *, percent: bool, tolerance: float
+) -> bool:
+    """True if any computed result holds the figure's magnitude (for a ratio, also as a percent)."""
     target = abs(truth)
+    targets = [target, target * 100] if percent else [target]
     for result in results:
         values = [v for row in result.table.rows for v in row] + list(result.summary.values())
         for value in values:
             if isinstance(value, bool) or not isinstance(value, int | float):
                 continue
-            if math.isfinite(value) and _close(abs(float(value)), target, tolerance):
+            if math.isfinite(value) and any(
+                _close(abs(float(value)), t, tolerance) for t in targets
+            ):
                 return True
     return False
 

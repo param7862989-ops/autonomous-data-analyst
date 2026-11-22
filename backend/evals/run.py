@@ -125,7 +125,9 @@ def run_tools(cases: list[Case]) -> list[ToolCaseReport]:
             ]
             for truth in case.truths:
                 value = float(truth.compute(frame))
-                ok = result_contains(stored, value, tolerance=truth.relative_tolerance)
+                ok = result_contains(
+                    stored, value, percent=truth.percent, tolerance=truth.relative_tolerance
+                )
                 report.checks.append(f"{'PASS' if ok else 'FAIL'} {truth.label}: {value:,.6g}")
                 report.passed &= ok
             for entity_fn in case.entities:
@@ -213,7 +215,9 @@ def _score(
             in_text = text_states(
                 text, value, percent=truth.percent, tolerance=truth.relative_tolerance
             )
-            in_results = result_contains(outcome.results, value, tolerance=truth.relative_tolerance)
+            in_results = result_contains(
+                outcome.results, value, percent=truth.percent, tolerance=truth.relative_tolerance
+            )
             stated += in_text
             computed += in_results
             if not in_text:
