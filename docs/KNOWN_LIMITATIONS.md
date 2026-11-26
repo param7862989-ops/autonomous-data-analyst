@@ -5,9 +5,9 @@ says why, and what would change it.
 
 ## Not verified
 
-- **Live-model evaluation is two runs of 18 synthetic cases**, both answered by
-  `gemini-3.5-flash-lite`; `gemini-3.8-flash` is unmeasured. The precision rule for figures and
-  the `change_drivers` operation came after the second run and are untested live. See
+- **Live-model evaluation is three runs of 18 synthetic cases**, all answered by
+  `gemini-3.5-flash-lite`; `gemini-3.8-flash` is unmeasured, and so is anything on real data.
+  See
   [EVALUATION.md](EVALUATION.md).
 - **Gemini model availability varies.** On the free tier the newest Flash models are sometimes
   overloaded; the provider then falls back to `GEMINI_FALLBACK_MODEL` for the rest of the run,
@@ -49,7 +49,8 @@ says why, and what would change it.
   choice: running model-written code safely needs a separate sandbox.
 - **Causes are not checked.** Grounding verifies figures, not explanations. Live answers have
   called a planted drop "seasonal", which the data contradicts, and worded hypotheses as
-  certainties ("was driven by"). The prompt forbids both, but nothing enforces it; the UI shows
+  certainties ("was driven by"). Since the prompt forbade both, hypotheses have been hedged, but
+one still suggested seasonality the data contradicts; nothing enforces it; the UI shows
   hypotheses separately as "not proven by the data".
 - **Grounding is heuristic.** The check confirms each stated figure matches a computed number
   at the precision it is written with, not that it is attributed to the right thing or that

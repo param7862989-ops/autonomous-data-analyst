@@ -237,7 +237,7 @@ model on three synthetic datasets.
   fell 75 to 83%. Both were labelled as hypotheses; no metric reads them.
 - Every other figure in the 18 answers matched the data.
 
-Changed afterwards, and **not yet measured against a live model**:
+Changed afterwards (measured in the next run):
 
 - Grounding and the scorer accept only the rounding a figure's written precision implies
   (trailing zeros count as rounding down to two significant figures). Both errors above would
@@ -249,6 +249,46 @@ Changed afterwards, and **not yet measured against a live model**:
   of the top two or three columns.
 - The prompt asks for hypotheses worded as possibilities, and for seasonality to be checked
   against the same period a year earlier first.
+
+### Agent mode: full suite, 2026-11-26 (commit `b090539`, `gemini-3.5-flash-lite`)
+
+The first run with figures checked at the precision written and with `change_drivers`.
+
+| Metric | Score | Cases |
+|---|---|---|
+| `completed` | 1.000 | 18 |
+| `numeric_accuracy` | 1.000 | 15 |
+| `computed_correctly` | 1.000 | 15 |
+| `entity_accuracy` | 1.000 | 7 |
+| `tool_selection` | 1.000 | 16 |
+| `column_identification` | 1.000 | 14 |
+| `grounded` | 0.938 | 16 |
+| `charts_consistent` | 1.000 | 11 with a chart |
+| `interpretation_stated` | 1.000 | 2 |
+| `unanswerable_handled` | 1.000 | 2 |
+| `context_preserved` | 1.000 | 2 |
+| `limits_respected` | 1.000 | 1 |
+| `recovered` | 1.000 | 1 |
+
+Mean 17.1 s per case, 484,983 input and 16,816 output tokens. Manual review against the raw data:
+
+- **Both "why" questions used `change_drivers`** and named West and Standing Desk; the
+  tight-limits case answered from that single call.
+- **The one `grounded` failure was half a false alarm.** The check read the "30" in "June 30,
+  2024" as a figure (dates with month names are now skipped, in the UI too). The answer's
+  $261,758.27 change is correct but was subtracted by the model rather than computed, which the
+  check flags by design.
+- **One wrong figure scored as correct.** The outliers answer put the smallest outlier at
+  $2,819.30; it is $2,816.75. The operation showed the 20 most extreme of 21 rows without saying
+  so. It now reports the lowest and highest outlier and marks the table as partial.
+- **Every hypothesis was worded as a possibility**, but one still contradicts the data: the
+  tight-limits answer suggested seasonality for Standing Desks, which rose from Q2 to Q3 in 2023.
+  With one tool call it could not check the year before.
+- `sales-units-revenue-relationship` stopped at the turn limit after six calls with a correct
+  answer, which the app shows as possibly incomplete.
+- Every other figure in the 18 answers matched the data.
+
+The two fixes above came after this run and are covered by tests, not yet by a live run.
 
 ## Known failure modes (expected, to watch for in agent runs)
 

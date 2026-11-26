@@ -139,12 +139,13 @@ truth computed independently from the raw data. **Tool mode passes 14/14 cases**
 analytical layer computes every ground-truth figure correctly. **Agent mode** (the full workflow
 with a real model, scoring numeric accuracy, tool choice, columns, grounding, chart/data
 consistency, ambiguity and unanswerable handling, follow-up context and failure recovery) is implemented
-and tested with a scripted model. In the latest live run (2026-11-22, `gemini-3.5-flash-lite`)
-all 18 cases completed and every metric scored 1.000 except entity accuracy (0.929), but manual
-review found what the metrics missed: one wrong figure and one wrong trend direction that were
-scored as correct, a missed cause, and two false explanations labelled as hypotheses. The
-grounding check is now exact to the precision written and a `change_drivers` operation finds
-every segment that moved out of proportion; both are untested with a live model. See [docs/EVALUATION.md](docs/EVALUATION.md).
+and tested with a scripted model. Three full live runs (2026-11-22 to 26, `gemini-3.5-flash-lite`)
+completed all 18 cases, each answer reviewed by hand against the data. The second scored 1.000
+on almost everything while a wrong figure, a wrong trend direction, a missed cause and two false
+explanations got through. That led to checking figures at the precision written and to a
+`change_drivers` operation. In the third run both "why" questions named both planted causes,
+and grounding scored 0.938. Review still found one wrong figure (from a partly shown outlier
+table, now fixed) and one hypothesis the data contradicts. See [docs/EVALUATION.md](docs/EVALUATION.md).
 
 ## Deployment
 
@@ -166,7 +167,7 @@ CI actions and a runtime dependency audit.
 |---|---|
 | Upload, profiling, auth, conversations, history | Working and tested (unit, integration, E2E) |
 | Agent workflow, tools, sandbox, charts, grounding | Working and tested with a scripted model |
-| Answer quality with a real model | Two runs of 18 synthetic cases with `gemini-3.5-flash-lite`, reviewed by hand; the latest fixes and `gemini-3.8-flash` **not yet measured** |
+| Answer quality with a real model | Three runs of 18 synthetic cases with `gemini-3.5-flash-lite`, reviewed by hand; `gemini-3.8-flash` **not yet measured** |
 | Containers | Built and smoke-tested in CI |
 | Public deployment | **Not done**: needs a server and domain |
 

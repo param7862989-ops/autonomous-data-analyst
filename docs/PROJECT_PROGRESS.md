@@ -427,7 +427,10 @@ authorization later is a common source of data leaks).
 - **Found in the live suite:** a wrong figure and a wrong trend direction scored 1.0, the Q3
   answer missed West, and two hypotheses contradicted the data.
 - **Verified:** tests that fail on the old tolerance; `change_drivers` against pandas; one call
-  finding both planted causes with a scripted model. Not verified: a live model.
+  finding both planted causes with a scripted model; a third live suite in which both "why"
+  questions used it and named both causes.
+- **Found in that run:** month-name dates ("June 30") read as figures, and an outliers result
+  that showed 20 of 21 rows without saying so, which gave a wrong range (both fixed).
 - **Checkpoint questions:**
   1. Why does "$280,000" pass for 280,355.87 but "$281,000" fail, and when is a relative
      tolerance the right choice instead?
@@ -438,8 +441,7 @@ authorization later is a common source of data leaks).
 
 ## Outstanding (needs you)
 
-- Two full agent-mode runs (2026-11-22) measured `gemini-3.5-flash-lite`; see EVALUATION.md.
-  Next: run the suite again to measure the precision rule and `change_drivers` (and once with
-  `gemini-3.8-flash` when it is not overloaded).
+- Three full agent-mode runs measured `gemini-3.5-flash-lite`; see EVALUATION.md. Still to do:
+  one with `gemini-3.8-flash` when it is not overloaded, and a try of the app by hand.
 - A server and domain, to deploy with the production overlay and run `scripts/smoke_test.sh`.
 - Reviewing the open Dependabot PRs (#3, #7, #10, #11, #15, #17); #10 and #11 are major upgrades.
