@@ -399,6 +399,14 @@ def test_outliers_iqr_matches_pandas(
     assert result.summary["upper_bound"] == pytest.approx(upper)
     assert [c.name for c in result.table.columns] == ["product", "revenue"]
     assert result.table.rows[0][1] == pytest.approx(expected["Revenue"].max())
+    # Only the 5 most extreme are shown, so the summary must give the range of all of them.
+    assert result.table.truncated
+    assert result.summary["lowest_outlier"] == pytest.approx(expected["Revenue"].min())
+    assert result.summary["highest_outlier"] == pytest.approx(expected["Revenue"].max())
+    assert result.notes == [
+        f"Showing the 5 most extreme of {len(expected)} outliers; lowest_outlier and "
+        "highest_outlier cover all of them."
+    ]
 
 
 def test_missing_values(

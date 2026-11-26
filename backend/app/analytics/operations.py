@@ -934,7 +934,8 @@ class OutliersOp(BaseModel):
             lower, upper, center = (mean or 0) - k * sd, (mean or 0) + k * sd, mean or 0
         outlier_clause = f"({col} < ? OR {col} > ?)"
         count_row = engine.execute(
-            f"SELECT COUNT(*) FROM {TABLE_NAME}{_where([*clauses, outlier_clause])}",
+            f"SELECT COUNT(*), MIN({col}), MAX({col}) FROM {TABLE_NAME}"
+            f"{_where([*clauses, outlier_clause])}",
             [*params, lower, upper],
         ).rows[0]
         outlier_count = int(count_row[0] or 0)
@@ -943,6 +944,14 @@ class OutliersOp(BaseModel):
             f"{_where([*clauses, outlier_clause])} ORDER BY ABS({col} - ?) DESC LIMIT {self.limit}",
             [*params, lower, upper, center],
         )
+        notes = []
+        if outlier_count > rows.row_count:
+            # The rows are the most extreme ones, so their range is not the outliers' range.
+            rows = rows.model_copy(update={"truncated": True})
+            notes.append(
+                f"Showing the {rows.row_count} most extreme of {outlier_count} outliers; "
+                "lowest_outlier and highest_outlier cover all of them."
+            )
         return OperationResult(
             operation=self.operation,
             description=(
@@ -957,8 +966,11 @@ class OutliersOp(BaseModel):
                 "upper_bound": _round(upper),
                 "outlier_count": outlier_count,
                 "outlier_share": _ratio(outlier_count / count),
+                "lowest_outlier": _num(count_row[1]),
+                "highest_outlier": _num(count_row[2]),
                 "checked_values": int(count),
             },
+            notes=notes,
         )
 
 
