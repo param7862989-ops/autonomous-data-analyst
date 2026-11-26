@@ -18,6 +18,7 @@ from app.analytics.engine import AnalyticsEngine
 from app.analytics.operations import (
     AggregateOp,
     AnalysisOperation,
+    ChangeDriversOp,
     CorrelationOp,
     DatasetSchema,
     DistributionOp,
@@ -170,6 +171,133 @@ def test_period_comparison_finds_the_planted_q3_decline(
     assert min(result.table.rows, key=lambda r: r[3])[0] == "West"
     # Shares of change sum to 1 for an additive metric.
     assert sum(row[5] for row in result.table.rows) == pytest.approx(1.0, abs=1e-5)
+
+
+Q2_2024 = Period(start=dt.date(2024, 4, 1), end=dt.date(2024, 6, 30))
+Q3_2024 = Period(start=dt.date(2024, 7, 1), end=dt.date(2024, 9, 30))
+REVENUE = Metric(agg="sum", column="revenue")
+
+
+def test_change_drivers_ranks_the_planted_causes_first(
+    sales_engine: AnalyticsEngine, sales_schema: DatasetSchema, truth: pd.DataFrame
+) -> None:
+    op = ChangeDriversOp(
+        date_column="order_date", metric=REVENUE, baseline=Q2_2024, current=Q3_2024
+    )
+    result = op.run(sales_engine, sales_schema)
+    q2 = truth[truth["Order Date"].between("2024-04-01", "2024-06-30")]
+    q3 = truth[truth["Order Date"].between("2024-07-01", "2024-09-30")]
+    total = q3["Revenue"].sum() - q2["Revenue"].sum()
+    assert result.summary["change"] == pytest.approx(total)
+    assert result.summary["pct_change"] == pytest.approx(total / q2["Revenue"].sum(), abs=1e-9)
+
+    by_dimension: dict[str, list[list[Any]]] = {}
+    for row in result.table.rows:
+        by_dimension.setdefault(row[0], []).append(row)
+    assert set(by_dimension) == {"Region", "Product", "Category", "Sales Channel"}
+    for label, rows in by_dimension.items():
+        assert len(rows) <= 3
+        base = q2.groupby(label, dropna=False)["Revenue"].sum()
+        cur = q3.groupby(label, dropna=False)["Revenue"].sum()
+        for _, segment, baseline, current, change, pct, share, size, gap in rows:
+            key = float("nan") if segment is None else segment
+            b, c = base.get(key, 0.0), cur.get(key, 0.0)
+            assert (baseline, current, change) == pytest.approx((b, c, c - b))
+            assert pct == pytest.approx((c - b) / b, abs=1e-9)
+            assert share == pytest.approx((c - b) / total, abs=1e-9)
+            assert size == pytest.approx(b / q2["Revenue"].sum(), abs=1e-9)
+            assert gap == pytest.approx(share - size, abs=1e-9)
+        changes = [abs(row[4]) for row in rows]
+        assert changes == sorted(changes, reverse=True)
+
+    # West fell far more than its size predicts, then Standing Desk; a segment that only
+    # shrinks with the total (Online) ranks low even though its drop is large.
+    order = list(by_dimension)
+    assert order[:2] == ["Region", "Product"]
+    assert by_dimension["Region"][0][1] == "West"
+    assert by_dimension["Product"][0][1] == "Standing Desk"
+    assert order[-1] == "Sales Channel"
+    assert result.summary["largest_gap"] == "Region = West"
+
+
+def test_change_drivers_with_chosen_columns_and_filters_matches_period_comparison(
+    sales_engine: AnalyticsEngine, sales_schema: DatasetSchema
+) -> None:
+    west = [Filter(column="region", op="eq", value="West")]
+    drivers = ChangeDriversOp(
+        date_column="order_date",
+        metric=REVENUE,
+        baseline=Q2_2024,
+        current=Q3_2024,
+        columns=["product", "product"],
+        filters=west,
+        top=10,
+    ).run(sales_engine, sales_schema)
+    comparison = PeriodComparisonOp(
+        date_column="order_date",
+        metric=REVENUE,
+        baseline=Q2_2024,
+        current=Q3_2024,
+        breakdown="product",
+        filters=west,
+    ).run(sales_engine, sales_schema)
+    assert [row[1:7] for row in drivers.table.rows] == comparison.table.rows
+    assert drivers.table.rows[0][1] == "Standing Desk"
+    assert drivers.summary["columns_compared"] == 1
+
+
+def test_change_drivers_skips_unusable_columns_and_needs_an_additive_metric(
+    sales_engine: AnalyticsEngine, sales_schema: DatasetSchema
+) -> None:
+    with pytest.raises(OperationError, match="2 to 50"):
+        ChangeDriversOp(
+            date_column="order_date",
+            metric=REVENUE,
+            baseline=Q2_2024,
+            current=Q3_2024,
+            columns=["order_id"],
+        ).run(sales_engine, sales_schema)
+    mixed = ChangeDriversOp(
+        date_column="order_date",
+        metric=REVENUE,
+        baseline=Q2_2024,
+        current=Q3_2024,
+        columns=["order_id", "region"],
+    ).run(sales_engine, sales_schema)
+    assert {row[0] for row in mixed.table.rows} == {"Region"}
+    assert any("Order ID" in note for note in mixed.notes)
+    with pytest.raises(OperationError, match="additive"):
+        ChangeDriversOp(
+            date_column="order_date",
+            metric=Metric(agg="mean", column="revenue"),
+            baseline=Q2_2024,
+            current=Q3_2024,
+        ).run(sales_engine, sales_schema)
+    with pytest.raises(OperationError, match="must be boolean or categorical or text"):
+        ChangeDriversOp(
+            date_column="order_date",
+            metric=REVENUE,
+            baseline=Q2_2024,
+            current=Q3_2024,
+            columns=["units"],
+        ).run(sales_engine, sales_schema)
+
+
+def test_change_drivers_validates_from_tool_input() -> None:
+    parsed = TypeAdapter(AnalysisOperation).validate_python(
+        {
+            "operation": "change_drivers",
+            "date_column": "order_date",
+            "metric": {"agg": "sum", "column": "revenue"},
+            "baseline": {"start": "2024-04-01", "end": "2024-06-30"},
+            "current": {"start": "2024-07-01", "end": "2024-09-30"},
+        }
+    )
+    assert isinstance(parsed, ChangeDriversOp)
+    with pytest.raises(ValidationError):
+        TypeAdapter(AnalysisOperation).validate_python(
+            {**parsed.model_dump(mode="json"), "columns": [f"c{i}" for i in range(9)]}
+        )
 
 
 def test_ratios_round_correctly_when_shown_as_percentages(

@@ -19,6 +19,8 @@ class Truth:
     # pandas returns numpy scalars; callers convert with float().
     compute: Callable[[Frame], Any]
     percent: bool = False
+    # How far a computed result may differ from pandas. Answer text gets no such slack: a figure
+    # must be right at the precision it is written with.
     relative_tolerance: float = 0.01
 
 
@@ -207,11 +209,26 @@ CASES: list[Case] = [
         ),
         # Both planted causes: naming only one of them is half an answer.
         entities=(lambda f: _region_change(f).idxmin(), lambda f: _product_change(f).idxmin()),
-        expected_operations=("period_comparison", "time_series", "aggregate", "sql"),
+        expected_operations=(
+            "change_drivers",
+            "period_comparison",
+            "time_series",
+            "aggregate",
+            "sql",
+        ),
         expected_columns=("order_date", "revenue"),
         expect_interpretation=True,
         reference=Q3_COMPARISON,
-        more_references=({**Q3_COMPARISON, "breakdown": "product"},),
+        more_references=(
+            {**Q3_COMPARISON, "breakdown": "product"},
+            {
+                "operation": "change_drivers",
+                "date_column": "order_date",
+                "metric": {"agg": "sum", "column": "revenue"},
+                "baseline": Q3_COMPARISON["baseline"],
+                "current": Q3_COMPARISON["current"],
+            },
+        ),
     ),
     Case(
         id="sales-q3-follow-up-region",
@@ -221,7 +238,7 @@ CASES: list[Case] = [
         follow_up_of="sales-q3-decline",
         truths=(Truth("largest regional drop", lambda f: abs(_region_change(f).min())),),
         entities=(lambda f: _region_change(f).idxmin(),),
-        expected_operations=("period_comparison", "aggregate", "sql"),
+        expected_operations=("change_drivers", "period_comparison", "aggregate", "sql"),
         expected_columns=("region", "revenue", "order_date"),
         reference=Q3_COMPARISON,
     ),
@@ -235,7 +252,7 @@ CASES: list[Case] = [
         truths=(
             Truth("largest product drop in West", lambda f: abs(_west_product_change(f).min())),
         ),
-        expected_operations=("period_comparison", "aggregate", "sql"),
+        expected_operations=("change_drivers", "period_comparison", "aggregate", "sql"),
         expected_columns=("product", "region", "revenue"),
         reference={
             **Q3_COMPARISON,
@@ -297,7 +314,13 @@ CASES: list[Case] = [
         truths=(
             Truth("Q4 2024 revenue", lambda f: _q(f, "2024-10-01", "2024-12-31")["Revenue"].sum()),
         ),
-        expected_operations=("period_comparison", "aggregate", "time_series", "sql"),
+        expected_operations=(
+            "change_drivers",
+            "period_comparison",
+            "aggregate",
+            "time_series",
+            "sql",
+        ),
         expected_columns=("order_date", "revenue"),
         expect_interpretation=True,
         reference={
@@ -386,7 +409,13 @@ CASES: list[Case] = [
         dataset="sales",
         question="Why did revenue decrease in Q3?",
         category="limits",
-        expected_operations=("period_comparison", "time_series", "aggregate", "sql"),
+        expected_operations=(
+            "change_drivers",
+            "period_comparison",
+            "time_series",
+            "aggregate",
+            "sql",
+        ),
         limits={"max_iterations": 1, "max_tool_calls": 1},
     ),
     Case(
@@ -398,7 +427,13 @@ CASES: list[Case] = [
             Truth("Q2 2024 revenue", lambda f: _q2(f)["Revenue"].sum()),
             Truth("Q3 2024 revenue", lambda f: _q3(f)["Revenue"].sum()),
         ),
-        expected_operations=("period_comparison", "time_series", "aggregate", "sql"),
+        expected_operations=(
+            "change_drivers",
+            "period_comparison",
+            "time_series",
+            "aggregate",
+            "sql",
+        ),
         fail_first_query=True,
     ),
 ]

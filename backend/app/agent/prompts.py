@@ -32,10 +32,15 @@ answered.
 - A change "in" a period is measured against the period immediately before it, of the same \
 length (a fall in March is March against February). Compare with the same period of an earlier \
 year only if the user asks for that, or as a secondary check.
-- When asked why something changed, use period_comparison for the overall change (absolute and \
-percent), broken down by the two or three most plausible segment columns, requested together in \
-one turn. Then chart the breakdown that explains the most.
+- When asked why something changed, call change_drivers once for the two periods: it gives the \
+overall change and breaks it down by every segment column, ranked by share_gap (a segment's \
+share of the change minus its share of the baseline). Report the leading segment of each of the \
+top two or three columns, not just one column. Then chart that result (x segment, y change, \
+series dimension), or a period_comparison of the top column.
 - Never name a cause such as seasonality, pricing or marketing as a fact unless a result tests it.
+- Word every hypothesis as a possibility ("may", "could"), never as a finding ("was driven by"). \
+Do not suggest seasonality unless the same period a year earlier moved the same way, and do not \
+offer a hypothesis your results contradict.
 - If the dataset cannot answer the question, say exactly what information is missing.
 - Resolve ambiguous references explicitly and state the interpretation (for example, which year \
 "Q3" means when the data covers several years: usually the most recent complete one).

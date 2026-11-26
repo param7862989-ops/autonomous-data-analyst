@@ -56,6 +56,8 @@ _AGG_LABEL = {
 }
 _NUMERIC_AGGS = {"sum", "mean", "median", "std"}
 _ADDITIVE_AGGS = {"sum", "count"}
+MAX_DRIVER_COLUMNS = 8
+MAX_DRIVER_SEGMENTS = 50
 _PERIOD_LABEL_SQL = {
     "day": "STRFTIME({p}, '%Y-%m-%d')",
     "week": "STRFTIME({p}, '%G-W%V')",
@@ -427,30 +429,10 @@ class PeriodComparisonOp(BaseModel):
 
     def run(self, engine: QueryEngine, schema: DatasetSchema) -> OperationResult:
         compiler = _Compiler(schema)
-        date = quote(schema.get(self.date_column, allowed={"datetime"}, role="date column").name)
-        value = "1" if self.metric.column is None else quote(schema.get(self.metric.column).name)
-        base_start, base_end = self.baseline.bounds()
-        cur_start, cur_end = self.current.bounds()
-        # One template for both periods; the bound parameters decide which period each
-        # aggregate (and each half of the WHERE clause) covers.
-        in_range = f"{date} >= CAST(? AS TIMESTAMP) AND {date} < CAST(? AS TIMESTAMP)"
-        base_expr = compiler.metric(self.metric, f"CASE WHEN {in_range} THEN {value} END")
-        cur_expr = compiler.metric(self.metric, f"CASE WHEN {in_range} THEN {value} END")
-        clauses, filter_params = compiler.filters(self.filters)
-        clauses.append(f"(({in_range}) OR ({in_range}))")
-        where_params = [*filter_params, base_start, base_end, cur_start, cur_end]
-        select_params = [base_start, base_end, cur_start, cur_end]
-
-        totals_sql = (
-            f"SELECT {base_expr} AS baseline, {cur_expr} AS current "
-            f"FROM {TABLE_NAME}{_where(clauses)}"
+        query = _TwoPeriods.build(
+            compiler, self.date_column, self.metric, self.baseline, self.current, self.filters
         )
-        totals = engine.execute(totals_sql, select_params + where_params).rows[0]
-        base_total = _as_float(totals[0], self.metric.agg)
-        cur_total = _as_float(totals[1], self.metric.agg)
-        total_change = (
-            cur_total - base_total if cur_total is not None and base_total is not None else None
-        )
+        base_total, cur_total, total_change = query.totals(engine)
         additive = self.metric.agg in _ADDITIVE_AGGS
         summary: dict[str, JsonScalar] = {
             "baseline_period": self.baseline.label(),
@@ -469,28 +451,15 @@ class PeriodComparisonOp(BaseModel):
 
         columns = ["baseline", "current", "change", "pct_change", "share_of_change"]
         if self.breakdown:
-            segment = quote(schema.get(self.breakdown, role="breakdown column").name)
-            sql = (
-                f"SELECT {segment} AS segment, {base_expr} AS baseline, {cur_expr} AS current "
-                f"FROM {TABLE_NAME}{_where(clauses)} GROUP BY {segment}"
-            )
-            raw = engine.execute(sql, select_params + where_params)
-            if raw.truncated:
+            column = schema.get(self.breakdown, role="breakdown column")
+            changes, truncated = query.segments(engine, column.name)
+            if truncated:
                 notes.append("The breakdown has more segments than could be compared.")
-            rows = []
-            for seg, base, cur in raw.rows:
-                b = _as_float(base, self.metric.agg)
-                c = _as_float(cur, self.metric.agg)
-                change = c - b if c is not None and b is not None else None
-                share = (
-                    _ratio(change / total_change)
-                    if additive and change is not None and total_change
-                    else None
-                )
-                rows.append([seg, _round(b), _round(c), _round(change), _pct(b, change), share])
-            rows.sort(
-                key=lambda r: abs(r[3]) if isinstance(r[3], int | float) else -1, reverse=True
-            )
+            rows: list[list[JsonScalar]] = [
+                [s.segment, _round(s.baseline), _round(s.current), _round(s.change), s.pct, share]
+                for s in changes
+                for share in [s.share_of(total_change) if additive else None]
+            ]
             segment_count = len(rows)
             summary["segment_count"] = segment_count
             rows = rows[: self.limit]
@@ -524,6 +493,248 @@ class PeriodComparisonOp(BaseModel):
                 f"{self.current.label()}{split}{_filter_note(schema, self.filters)}"
             ),
             table=table,
+            summary=summary,
+            notes=notes,
+        )
+
+
+@dataclass(frozen=True)
+class _SegmentChange:
+    segment: JsonScalar
+    baseline: float | None
+    current: float | None
+
+    @property
+    def change(self) -> float | None:
+        if self.baseline is None or self.current is None:
+            return None
+        return self.current - self.baseline
+
+    @property
+    def pct(self) -> float | None:
+        return _pct(self.baseline, self.change)
+
+    def share_of(self, total_change: float | None) -> float | None:
+        change = self.change
+        return _ratio(change / total_change) if change is not None and total_change else None
+
+
+@dataclass(frozen=True)
+class _TwoPeriods:
+    """SQL pieces for one metric over two date ranges (one scan computes both)."""
+
+    agg: str
+    base_expr: str
+    cur_expr: str
+    clauses: list[str]
+    select_params: list[Any]
+    where_params: list[Any]
+
+    @classmethod
+    def build(
+        cls,
+        compiler: _Compiler,
+        date_column: str,
+        metric: Metric,
+        baseline: Period,
+        current: Period,
+        filters: list[Filter],
+    ) -> _TwoPeriods:
+        schema = compiler.schema
+        date = quote(schema.get(date_column, allowed={"datetime"}, role="date column").name)
+        value = "1" if metric.column is None else quote(schema.get(metric.column).name)
+        base_start, base_end = baseline.bounds()
+        cur_start, cur_end = current.bounds()
+        # One template for both periods; the bound parameters decide which period each
+        # aggregate (and each half of the WHERE clause) covers.
+        in_range = f"{date} >= CAST(? AS TIMESTAMP) AND {date} < CAST(? AS TIMESTAMP)"
+        clauses, filter_params = compiler.filters(filters)
+        clauses.append(f"(({in_range}) OR ({in_range}))")
+        return cls(
+            agg=metric.agg,
+            base_expr=compiler.metric(metric, f"CASE WHEN {in_range} THEN {value} END"),
+            cur_expr=compiler.metric(metric, f"CASE WHEN {in_range} THEN {value} END"),
+            clauses=clauses,
+            select_params=[base_start, base_end, cur_start, cur_end],
+            where_params=[*filter_params, base_start, base_end, cur_start, cur_end],
+        )
+
+    @property
+    def _params(self) -> list[Any]:
+        return self.select_params + self.where_params
+
+    def totals(self, engine: QueryEngine) -> tuple[float | None, float | None, float | None]:
+        sql = (
+            f"SELECT {self.base_expr} AS baseline, {self.cur_expr} AS current "
+            f"FROM {TABLE_NAME}{_where(self.clauses)}"
+        )
+        row = engine.execute(sql, self._params).rows[0]
+        base, cur = _as_float(row[0], self.agg), _as_float(row[1], self.agg)
+        change = cur - base if cur is not None and base is not None else None
+        return base, cur, change
+
+    def segments(self, engine: QueryEngine, column: str) -> tuple[list[_SegmentChange], bool]:
+        """Per-segment values, largest absolute change first, and whether rows were capped."""
+        segment = quote(column)
+        sql = (
+            f"SELECT {segment} AS segment, {self.base_expr} AS baseline, "
+            f"{self.cur_expr} AS current FROM {TABLE_NAME}{_where(self.clauses)} "
+            f"GROUP BY {segment}"
+        )
+        raw = engine.execute(sql, self._params)
+        changes = [
+            _SegmentChange(seg, _as_float(base, self.agg), _as_float(cur, self.agg))
+            for seg, base, cur in raw.rows
+        ]
+        changes.sort(key=lambda s: abs(s.change) if s.change is not None else -1, reverse=True)
+        return changes, raw.truncated
+
+    def distinct_counts(self, engine: QueryEngine, columns: list[str]) -> list[int]:
+        counts = ", ".join(f"COUNT(DISTINCT {quote(c)})" for c in columns)
+        sql = f"SELECT {counts} FROM {TABLE_NAME}{_where(self.clauses)}"
+        row = engine.execute(sql, self.where_params).rows[0]
+        return [n if isinstance(n, int) and not isinstance(n, bool) else 0 for n in row]
+
+
+class ChangeDriversOp(BaseModel):
+    """Explain a change between two date ranges across several segment columns at once.
+
+    For an additive metric (sum or count), each segment gets its change, its share of the total
+    change and its share of the baseline. ``share_gap`` is the difference: a segment that moved
+    only as much as its size predicts has a gap near zero, so the columns are ranked by their
+    largest gap. A large gap locates a change; it does not explain why it happened.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    operation: Literal["change_drivers"] = "change_drivers"
+    date_column: str
+    metric: Metric
+    baseline: Period = Field(description="The earlier/reference period.")
+    current: Period = Field(description="The period being explained.")
+    columns: list[str] = Field(
+        default_factory=list,
+        max_length=MAX_DRIVER_COLUMNS,
+        description=(
+            "Segment columns to compare. Empty means every categorical or boolean column with "
+            f"2 to {MAX_DRIVER_SEGMENTS} distinct values."
+        ),
+    )
+    filters: list[Filter] = Field(default_factory=list, max_length=10)
+    top: int = Field(
+        default=3, ge=1, le=10, description="Segments shown per column, largest change first."
+    )
+
+    def run(self, engine: QueryEngine, schema: DatasetSchema) -> OperationResult:
+        if self.metric.agg not in _ADDITIVE_AGGS:
+            raise OperationError(
+                "change_drivers needs an additive metric (sum or count). For averages or "
+                "medians, use period_comparison with a breakdown."
+            )
+        compiler = _Compiler(schema)
+        query = _TwoPeriods.build(
+            compiler, self.date_column, self.metric, self.baseline, self.current, self.filters
+        )
+        base_total, cur_total, total_change = query.totals(engine)
+        notes: list[str] = []
+
+        if self.columns:
+            names = [
+                schema.get(
+                    c, allowed={"categorical", "boolean", "text"}, role="segment column"
+                ).name
+                for c in dict.fromkeys(self.columns)
+            ]
+        else:
+            names = [
+                c.name
+                for c in schema.columns
+                if c.semantic_type in {"categorical", "boolean"} and c.name != self.date_column
+            ][:MAX_DRIVER_COLUMNS]
+        counts = query.distinct_counts(engine, names) if names else []
+        usable = [n for n, k in zip(names, counts, strict=True) if 2 <= k <= MAX_DRIVER_SEGMENTS]
+        skipped = [schema.label(n) for n in names if n not in usable]
+        if skipped:
+            notes.append(
+                f"Not compared (fewer than 2 or more than {MAX_DRIVER_SEGMENTS} values): "
+                + ", ".join(skipped)
+                + "."
+            )
+        if not usable:
+            raise OperationError(
+                f"No segment column has 2 to {MAX_DRIVER_SEGMENTS} values in these periods."
+            )
+        if not total_change:
+            notes.append("The total did not change, so there are no shares of the change.")
+
+        dimensions = []
+        for name in usable:
+            changes, truncated = query.segments(engine, name)
+            if truncated:
+                notes.append(f"{schema.label(name)} has more segments than could be compared.")
+            rows: list[list[JsonScalar]] = []
+            for s in changes:
+                share = s.share_of(total_change)
+                size = (
+                    _ratio(s.baseline / base_total)
+                    if s.baseline is not None and base_total
+                    else None
+                )
+                gap = _ratio(share - size) if share is not None and size is not None else None
+                rows.append(
+                    [
+                        schema.label(name),
+                        s.segment,
+                        _round(s.baseline),
+                        _round(s.current),
+                        _round(s.change),
+                        s.pct,
+                        share,
+                        size,
+                        gap,
+                    ]
+                )
+            gaps = [r[8] for r in rows if isinstance(r[8], float)]
+            dimensions.append((max(gaps, default=-math.inf), rows[: self.top]))
+        dimensions.sort(key=lambda d: d[0], reverse=True)
+        rows = [row for _, dim_rows in dimensions for row in dim_rows]
+
+        summary: dict[str, JsonScalar] = {
+            "baseline_period": self.baseline.label(),
+            "current_period": self.current.label(),
+            "change": _round(total_change),
+            "pct_change": _pct(base_total, total_change),
+        }
+        lead = max(dimensions[0][1], key=lambda r: r[8] if isinstance(r[8], float) else -math.inf)
+        if isinstance(lead[8], float):
+            summary["largest_gap"] = f"{lead[0]} = {lead[1]}"
+            summary["largest_gap_share_of_change"] = lead[6]
+        summary["baseline_total"] = _round(base_total)
+        summary["current_total"] = _round(cur_total)
+        summary["columns_compared"] = len(usable)
+
+        names_shown = ", ".join(schema.label(n) for n in usable)
+        columns = ["baseline", "current", "change", "pct_change", "share_of_change"]
+        return OperationResult(
+            operation=self.operation,
+            description=(
+                f"{compiler.metric_label(self.metric)}: {self.baseline.label()} vs "
+                f"{self.current.label()}, change by {names_shown}"
+                f"{_filter_note(schema, self.filters)}"
+            ),
+            table=TableResult(
+                columns=[
+                    ResultColumn(name="dimension", type="VARCHAR"),
+                    ResultColumn(name="segment", type="VARCHAR"),
+                ]
+                + [
+                    ResultColumn(name=c, type="DOUBLE")
+                    for c in [*columns, "baseline_share", "share_gap"]
+                ],
+                rows=rows,
+                row_count=len(rows),
+                truncated=False,
+            ),
             summary=summary,
             notes=notes,
         )
@@ -825,6 +1036,7 @@ AnalysisOperation = Annotated[
     AggregateOp
     | TimeSeriesOp
     | PeriodComparisonOp
+    | ChangeDriversOp
     | DistributionOp
     | CorrelationOp
     | OutliersOp

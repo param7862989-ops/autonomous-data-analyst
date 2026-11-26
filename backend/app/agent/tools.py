@@ -83,7 +83,9 @@ _DESCRIPTIONS = {
         "Run a typed analytical operation on the dataset: aggregate (group and summarise, "
         "rankings), time_series (metrics per day/week/month/quarter/year), period_comparison "
         "(compare two date ranges, optionally by segment, with each segment's contribution to "
-        "the change), distribution (histogram and statistics), correlation, outliers, "
+        "the change), change_drivers (compare two date ranges across every segment column at "
+        "once, ranked by which segment moved out of proportion to its size), "
+        "distribution (histogram and statistics), correlation, outliers, "
         "missing_values, or rows (individual matching rows). Prefer this over SQL."
     ),
     "execute_sql": (
@@ -327,6 +329,7 @@ _OPERATION_VERBS = {
     "aggregate": "Computing",
     "time_series": "Building time series:",
     "period_comparison": "Comparing periods:",
+    "change_drivers": "Finding what drove the change:",
     "distribution": "Measuring",
     "correlation": "Measuring",
     "outliers": "Looking for",
@@ -338,7 +341,7 @@ _OPERATION_VERBS = {
 def _analysis_label(operation: str, description: str) -> str:
     verb = _OPERATION_VERBS.get(operation, "Running")
     text = description[0].lower() + description[1:] if description else operation
-    if operation in {"aggregate", "time_series", "period_comparison"}:
+    if operation in {"aggregate", "time_series", "period_comparison", "change_drivers"}:
         text = description
     return f"{verb} {text}"[:200]
 

@@ -6,17 +6,19 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any
 
 import pytest
 
 from app.agent.llm.base import AssistantTurn, ToolResults
 from app.agent.llm.fake import Call, FakeProvider, done_turn, tool_turn
-from app.agent.schemas import StoredResult
+from app.agent.schemas import AnalysisPlan, StoredResult
 from app.analytics.engine import TableResult
 from evals.cases import CASES, CASES_BY_ID
 from evals.run import aggregate, run_agent, run_tools, write_report
-from evals.scoring import result_contains
+from evals.scoring import result_contains, text_states
 from tests.scripted import COMPARISON, sales_provider
+from tests.scripted import _plan as scripted_plan
 
 
 def test_tool_mode_evals_pass() -> None:
@@ -185,3 +187,81 @@ def test_a_ratio_may_be_computed_as_a_percentage(value: float, percent: bool, fo
         table=TableResult(columns=[], rows=[[value]], row_count=1, truncated=False),
     )
     assert result_contains([result], -0.344878, percent=percent, tolerance=0.01) is found
+
+
+@pytest.mark.parametrize(
+    ("text", "stated"),
+    [
+        ("June was $280,355.87.", True),
+        ("June was about $280,000.", True),
+        ("June was $280.4k.", True),
+        ("June was $280,355.86.", False),
+        ("June was $281,500.00.", False),
+        ("June was $279,000.", False),
+    ],
+)
+def test_answers_must_state_figures_at_the_precision_written(text: str, stated: bool) -> None:
+    assert text_states(text, 280355.87, percent=False) is stated
+
+
+def drivers_provider() -> FakeProvider:
+    """A model that answers the Q3 question with one change_drivers call and a chart of it."""
+    drivers = {"analysis": {**COMPARISON["analysis"], "operation": "change_drivers", "columns": []}}
+    drivers["analysis"].pop("breakdown")
+    chart = {
+        "result_id": "r1",
+        "chart_type": "bar",
+        "x": "segment",
+        "y": ["change"],
+        "series": "dimension",
+        "title": "Where revenue fell, Q2 to Q3 2024",
+    }
+
+    def tool_step(call: Call) -> AssistantTurn:
+        turns = sum(1 for m in call.messages if isinstance(m, AssistantTurn))
+        steps = [("execute_analysis", drivers), ("create_chart", chart)]
+        return tool_turn(steps[turns]) if turns < len(steps) else done_turn()
+
+    def structured(call: Call) -> dict[str, Any]:
+        if call.schema is AnalysisPlan:
+            return scripted_plan(call)
+        prompt = call.messages[0].text  # type: ignore[union-attr]
+        line = next(x for x in prompt.splitlines() if x.startswith('{"id": "r1"'))
+        result = json.loads(line)
+        summary, leads = result["summary"], {}
+        for row in result["rows"]:
+            leads.setdefault(row[0], row)
+        region, product = leads["Region"], leads["Product"]
+        return {
+            "summary": (
+                f"Revenue fell {abs(summary['pct_change']) * 100:.1f}% from Q2 to Q3 2024, "
+                f"from ${summary['baseline_total']:,.2f} to ${summary['current_total']:,.2f}. "
+                f"{region[1]} and {product[1]} fell far more than their size."
+            ),
+            "findings": [
+                {
+                    "statement": f"{region[1]} accounts for {region[6] * 100:.1f}% of the drop "
+                    f"but {region[7] * 100:.1f}% of Q2 revenue.",
+                    "kind": "fact",
+                    "evidence": ["r1"],
+                },
+                {
+                    "statement": f"{product[1]} fell by ${abs(product[4]):,.2f}.",
+                    "kind": "fact",
+                    "evidence": ["r1"],
+                },
+            ],
+            "caveats": [],
+            "chart_ids": ["c1"],
+            "follow_up_questions": [],
+        }
+
+    return FakeProvider(structured=structured, tool_step=tool_step, model_name="scripted-test")
+
+
+def test_one_change_drivers_call_finds_both_planted_causes() -> None:
+    report = run_agent([CASES_BY_ID["sales-q3-decline"]], drivers_provider)[0]
+    assert report.operations == ["change_drivers"]
+    assert report.chart_count == 1
+    assert report.notes == []
+    assert all(score == 1.0 for score in report.scores.values()), report.scores
