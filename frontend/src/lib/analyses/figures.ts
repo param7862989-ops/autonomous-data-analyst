@@ -1,12 +1,17 @@
 /**
  * Split a statement into text and figures, mirroring the backend grounding check
  * (backend/app/agent/grounding.py), so verified figures can be highlighted and unverified ones
- * flagged. Dates, quarter labels, result ids, years, small counts and digits inside names from
+ * flagged. Dates (ISO or with month names), quarter labels, result ids, years, small counts and digits inside names from
  * the results ("Monitor 27in") are not figures.
  */
 
 const SKIP =
   /\b\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2}(?::\d{2})?)?\b|\b\d{4}-(?:\d{2}|Q[1-4]|W\d{2})\b|\bQ[1-4]\b|\b[rc]\d+\b/gi;
+// Dates with month names ("June 30", "30 June"), case-sensitive like the backend.
+const MONTH =
+  "(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|June?|July?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\\.?";
+const DAY = "\\d{1,2}(?:st|nd|rd|th)?\\b(?!\\s?%|[.,]\\d)";
+const MONTH_DATE = new RegExp(`\\b${MONTH}\\s+${DAY}|\\b${DAY}\\s+${MONTH}\\b`, "g");
 const NUMBER =
   /(?<![\w.])([-−])?([$€£₹])?(\d{1,3}(?:,\d{3})+|\d+)(\.\d+)?(?:\s?(%|percent\b|k\b|K\b|M\b|B\b|bn\b|million\b|billion\b|thousand\b))?/g;
 
@@ -33,7 +38,7 @@ export function splitFigures(text: string, unverified: string[], names: string[]
       if (!/[\p{L}\p{N}_]/u.test(around)) skipped.push([at, at + name.length]);
     }
   }
-  for (const match of text.matchAll(SKIP)) {
+  for (const match of [...text.matchAll(SKIP), ...text.matchAll(MONTH_DATE)]) {
     skipped.push([match.index, match.index + match[0].length]);
   }
   const flagged = new Set(unverified.map(normalize));

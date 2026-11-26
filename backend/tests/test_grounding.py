@@ -99,6 +99,25 @@ def test_years_counts_and_dates_are_not_checked() -> None:
     assert tokens == []
 
 
+@pytest.mark.parametrize(
+    "text",
+    [
+        "From April 1, 2024 to June 30, 2024.",
+        "Between 30 June 2024 and Sept. 15th.",
+        "On Dec 31 and 1st January.",
+    ],
+)
+def test_dates_with_month_names_are_not_checked(text: str) -> None:
+    assert extract_numbers(text) == []
+
+
+def test_a_figure_next_to_a_month_is_still_checked() -> None:
+    assert [t.text for t in extract_numbers("June 30% growth, and June revenue was $280,355.")] == [
+        "30%",
+        "$280,355",
+    ]
+
+
 def test_unicode_minus_and_currency() -> None:
     tokens = extract_numbers("change of " + chr(0x2212) + "63,359 and €1.5M")
     assert [t.value for t in tokens] == [63359.0, 1_500_000.0]

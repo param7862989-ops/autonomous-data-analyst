@@ -22,6 +22,11 @@ describe("splitFigures", () => {
     );
   });
 
+  it("skips dates written with month names, as the backend does", () => {
+    expect(figures("From April 1, 2024 to June 30, 2024, or 30 June and Sept. 15th.")).toEqual([]);
+    expect(figures("June 30% growth")).toEqual([["30%", "verified"]]);
+  });
+
   it("flags figures the grounding check could not verify", () => {
     expect(figures("West lost $63,359 and 99.9% of orders.", ["99.9%"])).toEqual([
       ["$63,359", "verified"],

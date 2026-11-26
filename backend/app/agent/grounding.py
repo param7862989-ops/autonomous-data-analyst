@@ -10,9 +10,9 @@ Checks that:
   and "$280,355.86" do not.
 
 It is a heuristic, not a proof: it cannot tell whether a correct number is attributed to the
-right thing, or whether words such as "rose" match the direction of a change. Years, dates,
-quarter labels and small integers (likely counts or ordinals) are not checked, and neither are
-digits inside a name that appears in the results ("Monitor 27in").
+right thing, or whether words such as "rose" match the direction of a change. Years, dates
+(ISO or with month names), quarter labels and small integers (likely counts or ordinals) are
+not checked, and neither are digits inside a name that appears in the results ("Monitor 27in").
 """
 
 from __future__ import annotations
@@ -24,10 +24,18 @@ from dataclasses import dataclass
 from app.agent.schemas import FinalAnswer, GroundingReport, StoredResult
 from app.analytics.charts import ChartSpec
 
+_MONTH = (
+    r"(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|June?|July?|Aug(?:ust)?"
+    r"|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\.?"
+)
+# A day of the month, but not "30%" or "30.5" after a month name.
+_DAY = r"\d{1,2}(?:st|nd|rd|th)?\b(?!\s?%|[.,]\d)"
 _STRIP = [
     re.compile(r"\b\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2}(?::\d{2})?)?\b"),  # dates / timestamps
     re.compile(r"\b\d{4}-(?:\d{2}|Q[1-4]|W\d{2})\b"),  # 2024-07, 2024-Q3, 2024-W05
     re.compile(r"\bQ[1-4]\b", re.IGNORECASE),
+    re.compile(rf"\b{_MONTH}\s+{_DAY}"),  # June 30, Sept. 15th
+    re.compile(rf"\b{_DAY}\s+{_MONTH}\b"),  # 30 June, 1st January
     re.compile(r"\b[rc]\d+\b"),  # result and chart ids
 ]
 _NUMBER = re.compile(
