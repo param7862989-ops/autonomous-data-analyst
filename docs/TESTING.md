@@ -9,7 +9,7 @@ provider that implements the same interface.
 | Backend unit + integration | pytest, real PostgreSQL | API, auth, ingestion, profiling, analytics, SQL guard, sandbox, agent, persistence |
 | Evaluation (tool mode) | `python -m evals.run --mode tools` | Analytical correctness against ground truth computed with pandas |
 | Frontend unit | Vitest + Testing Library | Components, API client, polling, forms, chart translation, theme switch, CSV and report exports |
-| End-to-end | Playwright | The full stack in a browser, with a scripted model |
+| End-to-end | Playwright | The full stack in a browser, with a scripted model. CI runs Chromium; the suite also passed in Firefox and WebKit (Safari's engine) on 2026-11-26 |
 | Containers | Docker Compose in CI | Images build, stack becomes healthy, upload works through the frontend, non-root |
 
 ## Backend (`cd backend`)

@@ -444,4 +444,8 @@ authorization later is a common source of data leaks).
 - Three full agent-mode runs measured `gemini-3.5-flash-lite`; see EVALUATION.md. Still to do:
   one with `gemini-3.8-flash` when it is not overloaded, and a try of the app by hand.
 - A server and domain, to deploy with the production overlay and run `scripts/smoke_test.sh`.
-- Reviewing the open Dependabot PRs (#3, #7, #10, #11, #15, #17); #10 and #11 are major upgrades.
+- Dependabot, as of 2026-11-26: #7, #17, #18 and the Anthropic SDK 2.x of #11 are applied on
+  `main` (one test now expects SDK 2.x's bearer-token header). Two stay open on purpose:
+  **#10, DuckDB 2.0**, needs about 3 GB of address space just to start on Linux (1.5.6 needs
+  1 GB), above the sandbox's 2 GB cap, so taking it means deciding to raise that limit; **#3,
+  ESLint 10**, runs, but `eslint-plugin-react`, `-jsx-a11y` and `-import` don't support it yet.

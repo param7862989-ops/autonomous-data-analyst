@@ -82,6 +82,9 @@ one still suggested seasonality the data contradicts; nothing enforces it; the U
 - **A dev-only advisory remains** in the lint toolchain (`braces` via `eslint-config-next`; no
   patched release exists). It is not in the production image and only processes this
   repository's own glob patterns.
+- **The analytical engine stays on DuckDB 1.x.** DuckDB 2.0 needs about 3 GB of address space
+  to start on Linux, more than the 2 GB cap on each analysis process. Upgrading means raising
+  `ANALYTICS_PROCESS_MEMORY_BYTES` and accepting a weaker limit on runaway queries.
 - **The analytics memory cap is Linux-only.** The engine's child process caps its address
   space with `RLIMIT_AS`, which Windows lacks and macOS rejects; there, only the
   timeout-and-kill protection applies. Production images run Linux. Each analysis also pays for starting that process.
