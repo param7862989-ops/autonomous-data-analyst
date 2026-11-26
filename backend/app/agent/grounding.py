@@ -4,13 +4,15 @@ Checks that:
 * every cited result id and chart id exists;
 * every "fact" cites at least one result;
 * every figure stated in the summary and findings matches a number in the computed results,
-  allowing for the rounding implied by how it is written (34.5% vs -0.34488, $63k vs 63,359)
-  and for ratios shown as percentages.
+  allowing only for the rounding implied by how it is written (34.5% vs -0.34488, $63k vs
+  63,359, $280,000 vs 280,355.87) and for ratios shown as percentages. Trailing zeros count as
+  rounding down to two significant figures, so "$280,000" passes for 280,355.87 but "$281,000"
+  and "$280,355.86" do not.
 
 It is a heuristic, not a proof: it cannot tell whether a correct number is attributed to the
-right thing. It reliably catches invented or miscalculated figures. Years, dates, quarter labels
-and small integers (likely counts or ordinals) are not checked, and neither are digits inside a
-name that appears in the results ("Monitor 27in").
+right thing, or whether words such as "rose" match the direction of a change. Years, dates,
+quarter labels and small integers (likely counts or ordinals) are not checked, and neither are
+digits inside a name that appears in the results ("Monitor 27in").
 """
 
 from __future__ import annotations
@@ -37,14 +39,15 @@ _MULTIPLIER = {
     "k": 1e3, "K": 1e3, "thousand": 1e3, "M": 1e6, "million": 1e6,
     "B": 1e9, "bn": 1e9, "billion": 1e9,
 }  # fmt: skip
-_RELATIVE_TOLERANCE = 0.005
+# Room for floating-point noise only, never for a wrong digit.
+_FLOAT_NOISE = 1e-9
 
 
 @dataclass(frozen=True)
 class NumberToken:
     text: str
     value: float  # absolute value, scaled by any suffix
-    rounding: float  # half a unit in the last written digit, scaled
+    rounding: float  # half a unit in the last significant written digit, scaled
     percent: bool
 
 
@@ -79,10 +82,22 @@ def extract_numbers(text: str, names: list[str] | None = None) -> list[NumberTok
         plain = not (decimals or suffix or match["currency"])
         if plain and (value <= 10 or (1900 <= value <= 2100 and "," not in integer)):
             continue  # counts, ordinals and years are not checked
-        places = len(decimals) - 1 if decimals else 0
-        rounding = 0.5 * 10 ** (-places) * multiplier
+        rounding = 0.5 * 10 ** (-_places(integer, decimals)) * multiplier
         tokens.append(NumberToken(match.group(0).strip(), value, rounding, percent))
     return tokens
+
+
+def _places(integer: str, decimals: str) -> int:
+    """Decimal places of the last significant written digit (negative for tens, hundreds...).
+
+    "280,000" may be 280,355 rounded to the thousand, but "30" is not 34 rounded to the ten:
+    trailing zeros count as rounding only while two significant figures remain.
+    """
+    if decimals:
+        return len(decimals) - 1
+    digits = integer.replace(",", "")
+    zeros = len(digits) - len(digits.rstrip("0"))
+    return -min(zeros, max(len(digits) - 2, 0))
 
 
 def _candidates(results: list[StoredResult]) -> tuple[list[float], list[float]]:
@@ -104,7 +119,7 @@ def _matches(token: NumberToken, plain: list[float], ratios: list[float]) -> boo
     pools = [ratios, plain] if token.percent else [plain]
     for pool in pools:
         for candidate in pool:
-            tolerance = max(token.rounding, _RELATIVE_TOLERANCE * candidate)
+            tolerance = token.rounding + _FLOAT_NOISE * max(candidate, 1.0)
             if abs(token.value - candidate) <= tolerance:
                 return True
     return False

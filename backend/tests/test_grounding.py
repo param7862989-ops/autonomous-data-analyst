@@ -135,3 +135,49 @@ def test_digits_inside_names_from_the_results_are_not_figures() -> None:
 )
 def test_names_cannot_hide_invented_figures(cell: str, text: str, bad: str) -> None:
     assert check_answer(answer(text), [RESULT, named(cell)], []).unverified_numbers == [bad]
+
+
+JUNE = StoredResult(
+    id="r1",
+    tool="execute_sql",
+    operation="sql",
+    description="Monthly revenue",
+    table=TableResult(
+        columns=[ResultColumn(name="revenue", type="DOUBLE")],
+        rows=[[280355.87], [0.344878]],
+        row_count=2,
+        truncated=False,
+    ),
+)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "June revenue was $280,355.87.",
+        "June revenue was $280,356.",
+        "June revenue was about $280,000.",
+        "June revenue was $280.4k.",
+        "June revenue was $0.28M.",
+        "Revenue fell 34.49%.",
+        "Revenue fell 34%.",
+    ],
+)
+def test_figures_rounded_as_written_pass(text: str) -> None:
+    assert check_answer(answer(text), [JUNE], []).passed
+
+
+@pytest.mark.parametrize(
+    ("text", "bad"),
+    [
+        # Each is within 0.5% of 280,355.87; the precision written says it is wrong.
+        ("June revenue was $280,355.86.", "$280,355.86"),
+        ("June revenue was $281,500.00.", "$281,500.00"),
+        ("June revenue was $279,000.", "$279,000"),
+        ("June revenue was $281,000.", "$281,000"),
+        ("Revenue fell 34.48%.", "34.48%"),
+        ("Revenue fell 30%.", "30%"),
+    ],
+)
+def test_figures_wrong_at_the_precision_written_are_flagged(text: str, bad: str) -> None:
+    assert check_answer(answer(text), [JUNE], []).unverified_numbers == [bad]

@@ -13,15 +13,16 @@ def _close(candidate: float, truth: float, tolerance: float) -> bool:
     return abs(candidate - truth) <= max(tolerance * abs(truth), 1e-9)
 
 
-def text_states(text: str, truth: float, *, percent: bool, tolerance: float) -> bool:
-    """True if ``text`` states the figure, allowing for written rounding and % for ratios."""
+def text_states(text: str, truth: float, *, percent: bool) -> bool:
+    """True if ``text`` states the figure, allowing only for the rounding implied by how it is
+    written (the same rule as the grounding check) and % for ratios."""
     target = abs(truth)
     for token in extract_numbers(text):
         candidates = [target * 100] if percent and token.percent else [target]
         if percent and not token.percent:
             candidates.append(target)
         for value in candidates:
-            if _close(token.value, value, tolerance) or abs(token.value - value) <= token.rounding:
+            if abs(token.value - value) <= token.rounding + 1e-9 * max(value, 1.0):
                 return True
     return False
 

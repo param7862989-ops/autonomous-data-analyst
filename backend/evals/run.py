@@ -212,9 +212,7 @@ def _score(
         stated = computed = 0
         for truth in case.truths:
             value = float(truth.compute(frame))
-            in_text = text_states(
-                text, value, percent=truth.percent, tolerance=truth.relative_tolerance
-            )
+            in_text = text_states(text, value, percent=truth.percent)
             in_results = result_contains(
                 outcome.results, value, percent=truth.percent, tolerance=truth.relative_tolerance
             )
