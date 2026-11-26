@@ -58,6 +58,7 @@ flowchart LR
 | Browser-to-API routing | Next.js rewrites `/api/*` to the backend | Same-origin cookies in every environment; narrow CORS. |
 | Frontend data layer | TanStack Query + a typed client generated from the backend's OpenAPI schema | Consistent loading/error/retry states; API contract drift is detectable in CI. |
 | Charts | Backend returns validated chart specs whose data is copied from a computed result; frontend renders with Plotly | The model chooses chart *shape*, never chart *numbers*. |
+| Visual design | An auditor's working paper: pale columnar-pad paper, Source Serif 4 for headings and written answers, Public Sans (tabular digits) for the interface and tables, the auditor's green as the one accent, section names in a left margin column, hairlines instead of shadows or nested boxes. Tokens live in `frontend/src/app/globals.css` | The product ticks every figure against a computation and cross-references it, which is what a working paper does; verified figures carry a highlighter and a drawn tick. Every text pair meets WCAG AA in both themes. |
 
 ## 3. Backend modules
 
