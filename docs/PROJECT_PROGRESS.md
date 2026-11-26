@@ -50,6 +50,7 @@ authorization later is a common source of data leaks).
 | 22 | Exporting results | Complete | 2026-11-19 commits (see Day 22) |
 | 23 | Live updates | Implemented — checkpoint pending | `1af5ad7` to `002da4d`, fixed by `607163a` |
 | 24 | Product completion audit | Implemented — checkpoint pending | 2026-11-22 commits (see Day 24) |
+| 25 | Measuring answers honestly | Implemented — checkpoint pending | 2026-11-26 commits (see Day 25) |
 
 ---
 
@@ -414,10 +415,31 @@ authorization later is a common source of data leaks).
   2. Why retry a malformed tool turn in the agent but a 503 in the provider?
   3. What does the recovery eval prove that a mocked unit test cannot, and what does it miss?
 
+## Day 25 — Measuring answers honestly
+
+- **Objective:** make the evaluation catch the errors a manual review of the live run found.
+- **Learn:** precision and significant figures (Working, 20 min); contribution and mix analysis
+  of a change (Deep, 40 min); why LLM-graded or tolerant metrics overstate quality (Working,
+  20 min).
+- **Built:** figures must match at the precision they are written with (grounding and the eval
+  scorer); a `change_drivers` operation that compares two periods across every segment column,
+  ranked by share of the change minus share of the baseline; prompt rules for hedged hypotheses.
+- **Found in the live suite:** a wrong figure and a wrong trend direction scored 1.0, the Q3
+  answer missed West, and two hypotheses contradicted the data.
+- **Verified:** tests that fail on the old tolerance; `change_drivers` against pandas; one call
+  finding both planted causes with a scripted model. Not verified: a live model.
+- **Checkpoint questions:**
+  1. Why does "$280,000" pass for 280,355.87 but "$281,000" fail, and when is a relative
+     tolerance the right choice instead?
+  2. Why does ranking by share of the change minus share of the baseline put West above Online,
+     although both fell by about the same amount?
+  3. Which errors in the live run could no deterministic check catch, and how would you measure
+     them?
+
 ## Outstanding (needs you)
 
-- The first full agent-mode run (2026-11-22) measured the fallback model; see EVALUATION.md.
-  The second prompt fix held in three runs of the Q3 chain (one answer lost to a 503); next is
-  the full suite (and again when `gemini-3.8-flash` is not overloaded).
+- Two full agent-mode runs (2026-11-22) measured `gemini-3.5-flash-lite`; see EVALUATION.md.
+  Next: run the suite again to measure the precision rule and `change_drivers` (and once with
+  `gemini-3.8-flash` when it is not overloaded).
 - A server and domain, to deploy with the production overlay and run `scripts/smoke_test.sh`.
 - Reviewing the open Dependabot PRs (#3, #7, #10, #11, #15, #17); #10 and #11 are major upgrades.

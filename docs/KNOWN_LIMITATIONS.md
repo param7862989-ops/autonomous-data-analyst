@@ -5,9 +5,9 @@ says why, and what would change it.
 
 ## Not verified
 
-- **Live-model evaluation is one run of 18 synthetic cases.** It measured the fallback model
-  (`gemini-3.5-flash-lite`), because `gemini-3.8-flash` was unavailable in every case; the main
-  model is unmeasured. The prompt changes made after that run were re-run on three cases only. See
+- **Live-model evaluation is two runs of 18 synthetic cases**, both answered by
+  `gemini-3.5-flash-lite`; `gemini-3.8-flash` is unmeasured. The precision rule for figures and
+  the `change_drivers` operation came after the second run and are untested live. See
   [EVALUATION.md](EVALUATION.md).
 - **Gemini model availability varies.** On the free tier the newest Flash models are sometimes
   overloaded; the provider then falls back to `GEMINI_FALLBACK_MODEL` for the rest of the run,
@@ -47,13 +47,14 @@ says why, and what would change it.
   Questions needing custom Python (regressions, forecasting, clustering) are answered as far as
   SQL and the operations allow, or reported as not supported. This is a deliberate security
   choice: running model-written code safely needs a separate sandbox.
-- **Causes are not checked.** Grounding verifies figures, not explanations. In the live run an
-  answer called a planted drop "seasonal", which the data contradicts, and passed. The prompt now
-  forbids untested causes, but nothing enforces it: in a later check two of three hypotheses,
-  though labelled as such, were still worded as certainties ("was driven by").
+- **Causes are not checked.** Grounding verifies figures, not explanations. Live answers have
+  called a planted drop "seasonal", which the data contradicts, and worded hypotheses as
+  certainties ("was driven by"). The prompt forbids both, but nothing enforces it; the UI shows
+  hypotheses separately as "not proven by the data".
 - **Grounding is heuristic.** The check confirms each stated figure matches a computed number
-  (allowing for rounding), not that it is attributed to the right thing; it also skips years
-  and small integers. Unverified figures are flagged in the UI, not removed.
+  at the precision it is written with, not that it is attributed to the right thing or that
+  words like "rose" match its direction. It skips years and small integers. Unverified figures
+  are flagged in the UI, not removed.
 - **Type inference heuristics.** Ambiguous dates (01/02/2024) are read month-first with a
   warning; percentages are read as plain numbers (12% becomes 12); columns with more than 5%
   unparseable values stay as text. Users cannot override inferred types.

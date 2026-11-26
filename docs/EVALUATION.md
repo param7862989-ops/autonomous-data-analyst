@@ -38,7 +38,7 @@ Per case it scores:
 | `entity_accuracy` | The answer names the right region / product / month / channel |
 | `tool_selection` | A sensible operation was used for the question type |
 | `column_identification` | Share of required columns that the plan or tool inputs used |
-| `grounded` | The grounding check passed: every figure in the answer matches a computed number, every cited id exists |
+| `grounded` | The grounding check passed: every figure in the answer matches a computed number at the precision it is written with, every cited id exists |
 | `charts_consistent` | Every charted value is present in the result the chart cites (not scored when there is no chart) |
 | `interpretation_stated` | For ambiguous questions, the plan states how it resolved the ambiguity |
 | `unanswerable_handled` | For unanswerable questions, the plan declined instead of inventing an answer |
@@ -198,7 +198,57 @@ Each run asked `sales-q3-decline` and its two follow-ups. Scores are as reported
   now accepts both forms, so later `computed_correctly` scores can be higher for that reason
   alone.
 
-The full suite has not been re-run with this prompt.
+### Agent mode: full suite, 2026-11-22 (commit `800df7b`, `gemini-3.5-flash-lite`)
+
+`gemini-3.5-flash-lite` was configured as the main model and answered all 18 cases.
+
+| Metric | Score | Cases |
+|---|---|---|
+| `completed` | 1.000 | 18 |
+| `numeric_accuracy` | 1.000 | 15 |
+| `computed_correctly` | 1.000 | 15 |
+| `entity_accuracy` | 0.929 | 7 |
+| `tool_selection` | 1.000 | 16 |
+| `column_identification` | 1.000 | 14 |
+| `grounded` | 1.000 | 16 |
+| `charts_consistent` | 1.000 | 10 with a chart |
+| `interpretation_stated` | 1.000 | 2 |
+| `unanswerable_handled` | 1.000 | 2 |
+| `context_preserved` | 1.000 | 2 |
+| `limits_respected` | 1.000 | 1 |
+| `recovered` | 1.000 | 1 |
+
+Mean 14.6 s per case, 410,096 input and 20,269 output tokens. It is still a single run of one
+model on three synthetic datasets.
+
+**The scores overstate the answers.** Every summary and finding was checked against the raw data:
+
+- **One wrong figure and one wrong direction scored 1.0.** `sales-monthly-trend-2024` gave June
+  as $280,355.86 in one finding (the summary had the right $280,355.87) and said revenue
+  "increased" from January to February ($212,861.76 to $212,243.62 is a fall). Grounding then
+  allowed 0.5% on any figure, about $1,400 here, and the eval scorer allowed 1%. Nothing checks
+  direction words.
+- **`sales-q3-decline` missed West**, the larger planted cause (60.3% of the drop), because it
+  broke the change down by product only. Across the four runs of this prompt it named West
+  three times.
+- **False causes came back as hypotheses.** One answer suggested "shifting seasonal demand",
+  though Standing Desk revenue rose from Q2 to Q3 in 2023. The tight-limits answer said West's
+  drop was "primarily caused" by Standing Desks, which are 37.8% of it, while every West product
+  fell 75 to 83%. Both were labelled as hypotheses; no metric reads them.
+- Every other figure in the 18 answers matched the data.
+
+Changed afterwards, and **not yet measured against a live model**:
+
+- Grounding and the scorer accept only the rounding a figure's written precision implies
+  (trailing zeros count as rounding down to two significant figures). Both errors above would
+  now be flagged, and the agent gets one retry to correct them.
+- A `change_drivers` operation compares two periods across every segment column in one call,
+  ranked by `share_gap` (a segment's share of the change minus its share of the baseline). On
+  this data it ranks West first, then Standing Desk, and Online, which shrank only in proportion
+  to its size, last. The prompt now asks for it on "why" questions and for the leading segment
+  of the top two or three columns.
+- The prompt asks for hypotheses worded as possibilities, and for seasonality to be checked
+  against the same period a year earlier first.
 
 ## Known failure modes (expected, to watch for in agent runs)
 

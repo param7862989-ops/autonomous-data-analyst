@@ -64,7 +64,7 @@ Key decisions (details in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)):
 | SQL checked as an allowlist over the parsed syntax tree, and the re-generated SQL is what runs | A "starts with SELECT" check is trivially bypassed; executing the validated tree avoids parser differentials |
 | Typed operations preferred over SQL | Deterministic, testable without an LLM, identifiers schema-checked and values bound |
 | Charts copy data from results | The model can't plot numbers it didn't compute |
-| Deterministic grounding check with one corrective retry | Invented or miscalculated figures are caught and flagged, not trusted |
+| Deterministic grounding check with one corrective retry | Figures that match no computed number at the precision written are flagged, not trusted |
 | No arbitrary Python execution | Not needed for the features; avoids a code sandbox |
 | Live updates with a polling fallback, and an in-process worker pool | Simple and robust on one node; the trade-offs are documented |
 
@@ -139,10 +139,12 @@ truth computed independently from the raw data. **Tool mode passes 14/14 cases**
 analytical layer computes every ground-truth figure correctly. **Agent mode** (the full workflow
 with a real model, scoring numeric accuracy, tool choice, columns, grounding, chart/data
 consistency, ambiguity and unanswerable handling, follow-up context and failure recovery) is implemented
-and tested with a scripted model. In one live run (2026-11-22, `gemini-3.5-flash-lite` as the
-fallback) all 18 cases completed, with 0.978 numeric accuracy and 0.938 grounded. Manual review
-found one false causal explanation that the metrics missed. After two prompt fixes it did not
-recur in three re-runs of that question; the full suite has not been re-run since. See [docs/EVALUATION.md](docs/EVALUATION.md).
+and tested with a scripted model. In the latest live run (2026-11-22, `gemini-3.5-flash-lite`)
+all 18 cases completed and every metric scored 1.000 except entity accuracy (0.929), but manual
+review found what the metrics missed: one wrong figure and one wrong trend direction that were
+scored as correct, a missed cause, and two false explanations labelled as hypotheses. The
+grounding check is now exact to the precision written and a `change_drivers` operation finds
+every segment that moved out of proportion; both are untested with a live model. See [docs/EVALUATION.md](docs/EVALUATION.md).
 
 ## Deployment
 
@@ -164,7 +166,7 @@ CI actions and a runtime dependency audit.
 |---|---|
 | Upload, profiling, auth, conversations, history | Working and tested (unit, integration, E2E) |
 | Agent workflow, tools, sandbox, charts, grounding | Working and tested with a scripted model |
-| Answer quality with a real model | Measured once on 18 synthetic cases with the fallback model; main model **not yet measured** |
+| Answer quality with a real model | Two runs of 18 synthetic cases with `gemini-3.5-flash-lite`, reviewed by hand; the latest fixes and `gemini-3.8-flash` **not yet measured** |
 | Containers | Built and smoke-tested in CI |
 | Public deployment | **Not done**: needs a server and domain |
 
