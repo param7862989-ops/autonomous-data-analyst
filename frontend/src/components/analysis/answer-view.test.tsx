@@ -51,7 +51,7 @@ describe("AnswerView", () => {
   it("flags figures that failed the grounding check", () => {
     render(<AnswerView outcome={outcome(["34.5%"])} onCite={vi.fn()} />);
     expect(screen.getByTitle(/could not be matched/)).toHaveTextContent("34.5%");
-    expect(screen.getByText(/1 statement\(s\) or figure\(s\)/)).toBeInTheDocument();
+    expect(screen.getByText(/1 statement\(s\) or figure\(s\) in this answer don.t match/)).toBeInTheDocument();
     const marks = Array.from(document.querySelectorAll("mark")).map((m) => m.textContent);
     expect(marks).toEqual(["$157,871"]);
   });

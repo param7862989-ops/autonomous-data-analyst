@@ -56,16 +56,16 @@ export function ConversationList({
   }
   return (
     <>
-      <ul className="divide-y divide-rule rounded-(--radius-panel) border border-rule bg-surface">
+      <ul className="divide-y divide-rule border-y border-rule">
         {items.map((item) => (
           <li
             key={item.id}
-            className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 px-4 py-3 text-sm"
+            className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 py-3 text-sm"
           >
             <div className="min-w-0">
               <Link
                 href={`/conversations/${item.id}`}
-                className="font-medium break-words text-primary underline-offset-2 hover:underline"
+                className="font-serif text-[17px] font-semibold break-words text-ink underline decoration-rule-strong underline-offset-4 hover:decoration-ink"
               >
                 {item.title}
               </Link>

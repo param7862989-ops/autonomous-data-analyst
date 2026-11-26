@@ -8,8 +8,8 @@ export const metadata: Metadata = { title: "Sign in" };
 export default function LoginPage() {
   return (
     <>
-      <h1 className="text-2xl font-semibold tracking-tight">Sign in</h1>
-      <p className="mt-1.5 mb-7 text-slate">Your datasets and analyses are private to your account.</p>
+      <h1 className="text-[1.625rem] leading-tight">Sign in</h1>
+      <p className="mt-2 mb-7 text-slate">Your datasets and answers are private to your account.</p>
       {/* useSearchParams (for ?next=) needs a Suspense boundary on a prerendered page. */}
       <Suspense>
         <AuthForm mode="login" />

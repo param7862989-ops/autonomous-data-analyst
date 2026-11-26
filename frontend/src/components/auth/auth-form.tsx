@@ -90,7 +90,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
       <Button type="submit" className="w-full" pending={mutation.isPending}>
         {submitLabel}
       </Button>
-      <p className="text-center text-sm text-slate">
+      <p className="text-sm text-slate">
         {isLogin ? "New here? " : "Already have an account? "}
         <Link
           href={isLogin ? "/register" : "/login"}

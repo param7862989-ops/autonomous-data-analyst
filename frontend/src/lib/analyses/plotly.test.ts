@@ -108,8 +108,8 @@ describe("toPlotly dark theme", () => {
       }),
       "dark",
     );
-    expect(figure.layout.paper_bgcolor).toBe("#161e2a");
-    expect(figure.layout.font?.color).toBe("#e7ecf3");
+    expect(figure.layout.paper_bgcolor).toBe("#18201b");
+    expect(figure.layout.font?.color).toBe("#e3e9e2");
     const colors = figure.data.map((t) => (t as { line: { color: string } }).line.color);
     expect(colors).toEqual([SERIES_COLORS_DARK[0], SERIES_COLORS_DARK[1]]);
   });

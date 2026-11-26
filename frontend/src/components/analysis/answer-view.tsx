@@ -1,12 +1,11 @@
-import { clsx } from "clsx";
 import { AlertTriangle } from "lucide-react";
 
 import type { AgentOutcome, Finding } from "@/lib/analyses/api";
 import { namesWithDigits, splitFigures } from "@/lib/analyses/figures";
 
 /**
- * Figures in facts that the backend verified against computed results get the highlighter;
- * figures it could not verify are flagged. Hypotheses get a dashed underline and a label, so
+ * Figures the backend matched to a computed result get the highlighter and a tick, as an
+ * auditor ticks a figure agreed to its source; figures it could not match are flagged. Hypotheses get a dashed underline and a label, so
  * the distinction never depends on colour alone.
  */
 function Statement({
@@ -22,13 +21,17 @@ function Statement({
     <>
       {splitFigures(text, unverified, names).map((segment, index) =>
         segment.figure === "verified" ? (
-          <mark key={index} className="tabular rounded-[2px] bg-highlight/70 px-0.5 text-ink">
+          <mark
+            key={index}
+            title="Matches a computed result"
+            className="ticked tabular bg-highlight/70 px-0.5 text-ink"
+          >
             {segment.text}
           </mark>
         ) : segment.figure === "unverified" ? (
           <span
             key={index}
-            className="tabular border-b-2 border-dotted border-danger"
+            className="tabular border-b-2 border-dotted border-danger text-danger"
             title="This figure could not be matched to a computed result"
           >
             {segment.text}
@@ -56,7 +59,7 @@ function EvidenceLinks({
           key={id}
           type="button"
           onClick={() => onCite(id)}
-          className="rounded-[3px] border border-rule-strong px-1 text-xs text-slate hover:border-primary hover:text-primary"
+          className="tabular text-[13px] font-medium text-primary underline decoration-dotted underline-offset-2 hover:decoration-solid"
           aria-label={`Show the computed result ${id}`}
         >
           {id}
@@ -90,22 +93,22 @@ export function AnswerView({
 
   return (
     <div className="space-y-5">
-      <p className="font-serif text-[17px] leading-relaxed">
+      <p className="max-w-[66ch] font-serif text-[19px] leading-[1.6]">
         <Statement text={answer.summary} unverified={unverified} names={names} />
       </p>
 
       {groundingIssues ? (
         <p className="flex gap-2 text-sm text-warning">
           <AlertTriangle size={16} aria-hidden="true" className="mt-0.5 shrink-0" />
-          {groundingIssues} statement(s) or figure(s) in this answer could not be matched to a
-          computed result. They are marked; treat them with care.
+          {groundingIssues} statement(s) or figure(s) in this answer don&apos;t match any computed
+          result. They are underlined in red: check them before relying on them.
         </p>
       ) : null}
 
       {facts.length ? (
         <section aria-label="What the data shows">
           <h4 className="text-sm font-semibold">What the data shows</h4>
-          <ul className="mt-2 space-y-2">
+          <ul className="mt-2 max-w-[72ch] space-y-2">
             {facts.map((finding, index) => (
               <li key={index} className="border-l-2 border-ink pl-3">
                 <Statement text={finding.statement} unverified={unverified} names={names} />
@@ -119,7 +122,7 @@ export function AnswerView({
       {hypotheses.length ? (
         <section aria-label="Possible explanations">
           <h4 className="text-sm font-semibold">Possible explanations, not proven by the data</h4>
-          <ul className="mt-2 space-y-2">
+          <ul className="mt-2 max-w-[72ch] space-y-2">
             {hypotheses.map((finding, index) => (
               <li key={index} className="border-l-2 border-dashed border-rule-strong pl-3">
                 <span className="mr-1.5 text-xs font-medium text-slate">Hypothesis</span>
@@ -145,22 +148,36 @@ export function AnswerView({
       ) : null}
 
       {onFollowUp && answer.follow_up_questions.length ? (
-        <div className="flex flex-wrap gap-2" aria-label="Suggested follow-up questions">
-          {answer.follow_up_questions.map((question) => (
-            <button
-              key={question}
-              type="button"
-              onClick={() => onFollowUp(question)}
-              className={clsx(
-                "rounded-full border border-rule-strong bg-surface px-3 py-1 text-left text-sm",
-                "hover:border-primary hover:text-primary",
-              )}
-            >
-              {question}
-            </button>
-          ))}
-        </div>
+        <section aria-label="Suggested follow-up questions">
+          <h4 className="text-sm font-semibold">Ask next</h4>
+          <SuggestionList questions={answer.follow_up_questions} onPick={onFollowUp} />
+        </section>
       ) : null}
     </div>
+  );
+}
+
+/** Questions to ask next, as a plain list: picking one puts it in the question box. */
+export function SuggestionList({
+  questions,
+  onPick,
+}: {
+  questions: string[];
+  onPick: (question: string) => void;
+}) {
+  return (
+    <ul className="mt-1.5 space-y-1">
+      {questions.map((question) => (
+        <li key={question}>
+          <button
+            type="button"
+            onClick={() => onPick(question)}
+            className="text-left text-primary underline decoration-primary/40 underline-offset-4 hover:decoration-primary"
+          >
+            {question}
+          </button>
+        </li>
+      ))}
+    </ul>
   );
 }

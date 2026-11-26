@@ -1,6 +1,5 @@
 "use client";
 
-import { ArrowLeft, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
@@ -16,6 +15,7 @@ import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Spinner } from "@/components/ui/spinner";
+import { PageHeader, Section } from "@/components/ui/page";
 import { Tabs } from "@/components/ui/tabs";
 import { isNotFound } from "@/lib/api/errors";
 import { useDataset, useDeleteDataset } from "@/lib/datasets/api";
@@ -74,43 +74,43 @@ export default function DatasetPage() {
   ];
 
   return (
-    <div className="max-w-6xl">
-      <Link
-        href="/datasets"
-        className="inline-flex items-center gap-1.5 text-sm text-slate hover:text-ink"
-      >
-        <ArrowLeft size={14} aria-hidden="true" /> Datasets
-      </Link>
-      <div className="mt-3 flex flex-wrap items-start justify-between gap-4">
-        <div className="min-w-0">
-          <h1 className="text-2xl font-semibold tracking-tight break-words">{data.name}</h1>
-          <p className="mt-1 text-sm text-slate">
+    <div>
+      <PageHeader
+        back={
+          <Link href="/datasets" className="text-slate underline-offset-4 hover:text-ink hover:underline">
+            All datasets
+          </Link>
+        }
+        title={data.name}
+        lead={
+          <p>
             {data.original_filename}
-            {data.sheet_name ? `, sheet ${data.sheet_name}` : ""}. Uploaded{" "}
+            {data.sheet_name ? `, sheet ${data.sheet_name}` : ""}, uploaded{" "}
             {formatDateTime(data.created_at)}.
           </p>
-        </div>
-        <div className="flex flex-wrap items-start gap-2">
-          <StartConversationButton datasetId={data.id} />
-          <Button variant="secondary" onClick={() => setConfirming(true)}>
-            <Trash2 size={15} aria-hidden="true" />
-            Delete
-          </Button>
-        </div>
-      </div>
+        }
+        actions={
+          <>
+            <StartConversationButton datasetId={data.id} />
+            <Button variant="secondary" onClick={() => setConfirming(true)}>
+              Delete
+            </Button>
+          </>
+        }
+      >
+        <dl className="mt-6 grid grid-cols-2 gap-x-8 gap-y-3 sm:grid-cols-4 sm:max-w-3xl">
+          {facts.map((fact) => (
+            <div key={fact.label}>
+              <dt className="text-sm text-slate">{fact.label}</dt>
+              <dd className="tabular font-serif text-[1.5rem] leading-tight">{fact.value}</dd>
+            </div>
+          ))}
+        </dl>
+      </PageHeader>
 
-      <dl className="mt-6 grid grid-cols-2 gap-x-8 gap-y-4 sm:grid-cols-4">
-        {facts.map((fact) => (
-          <div key={fact.label} className="border-l-2 border-rule-strong pl-3">
-            <dt className="text-sm text-slate">{fact.label}</dt>
-            <dd className="tabular text-lg font-semibold">{fact.value}</dd>
-          </div>
-        ))}
-      </dl>
-
-      <div className="mt-8">
+      <Section label="Conversations" id="conversations-heading" note="Questions about this dataset">
         <DatasetConversations datasetId={data.id} />
-      </div>
+      </Section>
 
       <div className="mt-10">
         <Tabs
@@ -125,7 +125,7 @@ export default function DatasetPage() {
                 <div className="space-y-8">
                   <QualityWarnings warnings={profile.warnings} columns={profile.columns} />
                   <section aria-labelledby="columns-heading">
-                    <h2 id="columns-heading" className="mb-3 text-base font-semibold">
+                    <h2 id="columns-heading" className="mb-3 text-[1.1875rem] leading-snug">
                       Columns
                     </h2>
                     <ProfileTable columns={profile.columns} />

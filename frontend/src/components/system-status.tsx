@@ -40,45 +40,39 @@ export function SystemStatus() {
   });
 
   return (
-    <section aria-labelledby="system-status-heading" className="max-w-xl">
-      <div className="flex items-center justify-between gap-4">
-        <h2 id="system-status-heading" className="text-base font-semibold">
-          System status
-        </h2>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => query.refetch()}
-          pending={query.isFetching}
-        >
-          Check again
-        </Button>
-      </div>
-      <div className="mt-3 rounded-(--radius-panel) border border-rule bg-surface">
-        {query.isPending ? (
-          <p className="flex items-center gap-2 px-4 py-3 text-sm text-slate">
-            <Spinner size={14} label="" /> Checking the API…
-          </p>
-        ) : query.isError ? (
-          <StatusRow ok={false} label="API">
-            {query.error instanceof ApiError && query.error.isNetworkError
-              ? "Unreachable. Check your network connection."
-              : "Not responding. Start the backend and check again."}
+    <div className="max-w-xl">
+      {query.isPending ? (
+        <p className="flex items-center gap-2 text-sm text-slate">
+          <Spinner size={14} label="" /> Checking the API…
+        </p>
+      ) : query.isError ? (
+        <StatusRow ok={false} label="API">
+          {query.error instanceof ApiError && query.error.isNetworkError
+            ? "Unreachable. Check your network connection."
+            : "Not responding. Start the backend and check again."}
+        </StatusRow>
+      ) : (
+        <ul className="divide-y divide-rule border-y border-rule">
+          <StatusRow ok label="API" as="li">
+            Responding
           </StatusRow>
-        ) : (
-          <ul className="divide-y divide-rule">
-            <StatusRow ok label="API" as="li">
-              Responding
+          {query.data.checks.map((check) => (
+            <StatusRow key={check.name} ok={check.ok} label={CHECK_LABELS[check.name] ?? check.name} as="li">
+              {check.ok ? "Available" : "Unavailable"}
             </StatusRow>
-            {query.data.checks.map((check) => (
-              <StatusRow key={check.name} ok={check.ok} label={CHECK_LABELS[check.name] ?? check.name} as="li">
-                {check.ok ? "Available" : "Unavailable"}
-              </StatusRow>
-            ))}
-          </ul>
-        )}
-      </div>
-    </section>
+          ))}
+        </ul>
+      )}
+      <Button
+        variant="ghost"
+        size="sm"
+        className="mt-2 -ml-3"
+        onClick={() => query.refetch()}
+        pending={query.isFetching}
+      >
+        Check again
+      </Button>
+    </div>
   );
 }
 
@@ -94,7 +88,7 @@ function StatusRow({
   as?: "p" | "li";
 }) {
   return (
-    <Tag className="flex items-center justify-between gap-4 px-4 py-3 text-sm">
+    <Tag className="flex items-center justify-between gap-4 py-2.5 text-sm">
       <span className="flex items-center gap-2.5">
         <span
           aria-hidden="true"

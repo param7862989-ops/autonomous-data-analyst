@@ -1,11 +1,11 @@
 "use client";
 
-import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { ConversationHeader } from "@/components/analysis/conversation-header";
+import { SuggestionList } from "@/components/analysis/answer-view";
 import { QuestionComposer } from "@/components/analysis/question-composer";
 import { RunCard } from "@/components/analysis/run-card";
 import { Alert } from "@/components/ui/alert";
@@ -111,20 +111,25 @@ export default function ConversationPage() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl">
-      <Link
-        href={`/datasets/${data.dataset_id}`}
-        className="inline-flex items-center gap-1.5 text-sm text-slate hover:text-ink"
-      >
-        <ArrowLeft size={14} aria-hidden="true" /> {data.dataset_name}
-      </Link>
-      <ConversationHeader id={id} title={data.title} datasetId={data.dataset_id} />
+    <div>
+      <header className="border-b border-ink pb-6">
+        <div className="mb-4 text-sm">
+          <Link
+            href={`/datasets/${data.dataset_id}`}
+            className="text-slate underline-offset-4 hover:text-ink hover:underline"
+          >
+            Dataset: {data.dataset_name}
+          </Link>
+        </div>
+        <ConversationHeader id={id} title={data.title} datasetId={data.dataset_id} />
+      </header>
 
-      <div className="mt-8 space-y-12">
-        {data.runs.map((run) => (
+      <div>
+        {data.runs.map((run, index) => (
           <RunCard
             key={run.id}
             runId={run.id}
+            number={index + 1}
             onFollowUp={followUp}
             onRetry={disabledReason || ask.isPending ? undefined : (text) => ask.mutate(text)}
           />
@@ -132,30 +137,24 @@ export default function ConversationPage() {
       </div>
 
       {data.runs.length === 0 ? (
-        <section aria-labelledby="start-heading" className="mt-6">
-          <h2 id="start-heading" className="font-medium">
+        <section
+          aria-labelledby="start-heading"
+          className="grid gap-x-10 gap-y-3 py-8 lg:grid-cols-[12rem_minmax(0,1fr)]"
+        >
+          <h2 id="start-heading" className="text-[1.1875rem] leading-snug">
             Ask your first question
           </h2>
-          <p className="mt-1 text-sm text-slate">
-            The analyst plans the analysis, runs computations on {data.dataset_name}, and shows
-            the results behind its answer. Some questions this dataset can answer:
-          </p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {starters.map((starter) => (
-              <button
-                key={starter}
-                type="button"
-                onClick={() => followUp(starter)}
-                className="rounded-full border border-rule-strong bg-surface px-3 py-1 text-left text-sm hover:border-primary hover:text-primary"
-              >
-                {starter}
-              </button>
-            ))}
+          <div>
+            <p className="max-w-[62ch] text-slate">
+              Answers come from computations on {data.dataset_name}, and each figure is checked
+              against them. Questions this dataset can answer:
+            </p>
+            <SuggestionList questions={starters} onPick={followUp} />
           </div>
         </section>
       ) : null}
 
-      <div className="sticky bottom-0 mt-10 bg-paper pt-3 pb-4">
+      <div className="sticky bottom-0 bg-paper pt-4 pb-4 lg:ml-[calc(12rem+2.5rem)]">
         <QuestionComposer
           ref={composer}
           value={question}

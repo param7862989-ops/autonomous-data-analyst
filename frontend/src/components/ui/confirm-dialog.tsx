@@ -43,11 +43,11 @@ export function ConfirmDialog({
         event.preventDefault();
         if (!pending) onCancel();
       }}
-      className="m-auto w-[min(28rem,calc(100vw-2rem))] rounded-(--radius-panel) border border-rule bg-surface p-0 text-ink shadow-xl backdrop:bg-ink/40"
+      className="m-auto w-[min(28rem,calc(100vw-2rem))] rounded-(--radius-panel) border border-ink bg-surface p-0 text-ink backdrop:bg-ink/45"
     >
       {open ? (
         <div className="p-5">
-          <h2 id={titleId} className="text-lg font-semibold">
+          <h2 id={titleId} className="text-[1.25rem] leading-snug">
             {title}
           </h2>
           <div className="mt-2 text-sm text-slate">{children}</div>

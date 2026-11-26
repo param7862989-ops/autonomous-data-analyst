@@ -6,25 +6,12 @@ import "./globals.css";
 
 // Fonts are self-hosted from the Fontsource packages (OFL-1.1), so builds need no network.
 // next/font requires these options to be literal values.
-const plexSans = localFont({
-  src: [
-    {
-      path: "../../node_modules/@fontsource/ibm-plex-sans/files/ibm-plex-sans-latin-400-normal.woff2",
-      weight: "400",
-      style: "normal",
-    },
-    {
-      path: "../../node_modules/@fontsource/ibm-plex-sans/files/ibm-plex-sans-latin-500-normal.woff2",
-      weight: "500",
-      style: "normal",
-    },
-    {
-      path: "../../node_modules/@fontsource/ibm-plex-sans/files/ibm-plex-sans-latin-600-normal.woff2",
-      weight: "600",
-      style: "normal",
-    },
-  ],
-  variable: "--font-plex-sans",
+// Public Sans (interface, tables, figures: it has tabular digits) and Source Serif 4 (headings
+// and written answers).
+const publicSans = localFont({
+  src: "../../node_modules/@fontsource-variable/public-sans/files/public-sans-latin-wght-normal.woff2",
+  weight: "100 900",
+  variable: "--font-public-sans",
   display: "swap",
 });
 
@@ -41,7 +28,7 @@ export const metadata: Metadata = {
     template: "%s | Autonomous Data Analyst",
   },
   description:
-    "Upload a dataset, review its profile, and ask questions answered with computed evidence.",
+    "Upload a spreadsheet, check its profile, and ask questions. Every figure in an answer is checked against a computation you can open.",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
@@ -49,7 +36,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     // data-theme is set by theme-init.js before React hydrates, so the server's <html> can differ.
     <html
       lang="en"
-      className={`${plexSans.variable} ${sourceSerif.variable}`}
+      className={`${publicSans.variable} ${sourceSerif.variable}`}
       suppressHydrationWarning
     >
       <head>

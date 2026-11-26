@@ -35,17 +35,18 @@ export function DatasetList() {
   }
   if (datasets.data.items.length === 0) {
     return (
-      <div className="rounded-(--radius-panel) border border-dashed border-rule-strong px-5 py-8 text-center">
+      <div className="border-y border-rule py-6">
         <p className="font-medium">No datasets yet</p>
         <p className="mt-1 text-sm text-slate">
-          Upload a CSV or Excel file to see its profile and start asking questions.
+          Upload a CSV or Excel file with the form on this page. You will see its profile
+          straight away, then you can ask questions about it.
         </p>
       </div>
     );
   }
 
   return (
-    <div className="relative overflow-x-auto rounded-(--radius-panel) border border-rule bg-surface">
+    <div className="relative overflow-x-auto border-y border-rule bg-surface">
       <table className="w-full min-w-[36rem] text-sm">
         <caption className="sr-only">Your datasets</caption>
         <thead>

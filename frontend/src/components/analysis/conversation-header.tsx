@@ -1,6 +1,5 @@
 "use client";
 
-import { Pencil, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -72,17 +71,15 @@ export function ConversationHeader({
   }
 
   return (
-    <div className="mt-3 flex flex-wrap items-start justify-between gap-3">
-      <h1 className="min-w-0 max-w-full text-2xl font-semibold tracking-tight break-words">
+    <div className="flex flex-wrap items-end justify-between gap-3">
+      <h1 className="min-w-0 max-w-[46rem] text-[2rem] leading-[1.15] break-words sm:text-[2.375rem]">
         {title}
       </h1>
       <div className="flex gap-2">
         <Button variant="secondary" size="sm" onClick={() => setDraft(title)}>
-          <Pencil size={14} aria-hidden="true" />
           Rename
         </Button>
         <Button variant="secondary" size="sm" onClick={() => setConfirming(true)}>
-          <Trash2 size={14} aria-hidden="true" />
           Delete
         </Button>
       </div>

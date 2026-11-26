@@ -1,6 +1,5 @@
 "use client";
 
-import { MessageSquarePlus } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 import { Alert } from "@/components/ui/alert";
@@ -22,7 +21,6 @@ export function StartConversationButton({ datasetId }: { datasetId: string }) {
         }
         pending={create.isPending}
       >
-        <MessageSquarePlus size={16} aria-hidden="true" />
         Ask a question
       </Button>
       {create.isError ? (
@@ -34,21 +32,17 @@ export function StartConversationButton({ datasetId }: { datasetId: string }) {
   );
 }
 
+/** This dataset's conversations; the page supplies the heading. */
 export function DatasetConversations({ datasetId }: { datasetId: string }) {
   const config = useServerConfig();
   return (
-    <section aria-labelledby="conversations-heading">
-      <h2 id="conversations-heading" className="text-base font-semibold">
-        Conversations
-      </h2>
+    <div>
       {config.data && !config.data.analysis_enabled ? (
-        <Alert tone="info" className="mt-3">
+        <Alert tone="info" className="mb-3">
           Asking questions is unavailable because this server has no language model configured.
         </Alert>
       ) : null}
-      <div className="mt-3">
-        <ConversationList key={datasetId} datasetId={datasetId} pageSize={10} />
-      </div>
-    </section>
+      <ConversationList key={datasetId} datasetId={datasetId} pageSize={10} />
+    </div>
   );
 }

@@ -60,7 +60,7 @@ export function Tabs({
               className={clsx(
                 "-mb-px border-b-2 px-3 py-2 text-sm font-medium",
                 selected
-                  ? "border-ink text-ink"
+                  ? "border-primary text-ink"
                   : "border-transparent text-slate hover:text-ink",
               )}
             >

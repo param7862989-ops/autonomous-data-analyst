@@ -1,52 +1,63 @@
-import { OverviewSummary } from "@/components/overview-summary";
+import Link from "next/link";
+
+import { OverviewCounts, RecentQuestions } from "@/components/overview-summary";
 import { SystemStatus } from "@/components/system-status";
+import { PageHeader, Section } from "@/components/ui/page";
 
 const STEPS = [
   {
-    title: "Upload a dataset",
-    body: "CSV or Excel. Files are validated, cleaned of duplicate column names, and profiled.",
+    title: "Upload a spreadsheet",
+    body: "CSV or Excel, up to 25 MB. It is checked and cleaned on the way in.",
   },
   {
-    title: "Review the profile",
-    body: "Column types, missing values, distributions and data-quality warnings, before any question is asked.",
+    title: "Read its profile",
+    body: "Column types, missing values, distributions and warnings, before you ask anything.",
   },
   {
-    title: "Ask a question",
-    body: "The analyst plans the analysis, runs real computations on your data, and cites the results behind every figure.",
+    title: "Ask in plain language",
+    body: "The answer comes from computations run on your data. Each figure is checked against them, and each statement links to its table.",
   },
 ];
 
 export default function OverviewPage() {
   return (
-    <div className="max-w-3xl">
-      <h1 className="text-2xl font-semibold tracking-tight">Overview</h1>
-      <p className="mt-2 max-w-[65ch] text-slate">
-        Ask questions about your data in plain language. Every number in an answer comes from a
-        computation you can inspect.
-      </p>
+    <div>
+      <PageHeader
+        title="Overview"
+        lead={<OverviewCounts />}
+        actions={
+          <Link
+            href="/datasets"
+            className="inline-flex h-10 items-center rounded-(--radius-control) bg-primary px-4 font-medium text-on-primary hover:bg-primary-hover"
+          >
+            Upload a dataset
+          </Link>
+        }
+      />
 
-      <div className="mt-8">
-        <OverviewSummary />
-      </div>
+      <Section label="Recent questions" id="recent-heading" note={<Link href="/history" className="text-primary underline-offset-2 hover:underline">All history</Link>}>
+        <RecentQuestions />
+      </Section>
 
-      <section aria-labelledby="how-heading" className="mt-12">
-        <h2 id="how-heading" className="text-base font-semibold">
-          How it works
-        </h2>
-        <ol className="mt-4 grid gap-6 sm:grid-cols-3">
+      <Section label="How it works" id="how-heading">
+        <ol className="grid gap-x-8 gap-y-6 sm:grid-cols-3">
           {STEPS.map((step, index) => (
-            <li key={step.title} className="border-t-2 border-ink pt-3">
-              <span className="tabular text-sm text-slate">Step {index + 1}</span>
-              <p className="mt-1 font-medium">{step.title}</p>
-              <p className="mt-1 text-sm text-slate">{step.body}</p>
+            <li key={step.title} className="grid grid-cols-[1.75rem_1fr] gap-x-2">
+              <span aria-hidden="true" className="font-serif text-[1.375rem] leading-none text-slate">
+                {index + 1}
+              </span>
+              <div>
+                <p className="font-medium">{step.title}</p>
+                <p className="mt-1 text-sm text-slate">{step.body}</p>
+              </div>
             </li>
           ))}
         </ol>
-      </section>
+      </Section>
 
-      <div className="mt-12">
+      <Section label="Service status" id="system-status-heading" className="border-b-0">
         <SystemStatus />
-      </div>
+      </Section>
     </div>
   );
 }

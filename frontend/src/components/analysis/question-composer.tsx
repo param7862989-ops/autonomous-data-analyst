@@ -1,6 +1,5 @@
 "use client";
 
-import { ArrowUp } from "lucide-react";
 import { forwardRef, useId } from "react";
 
 import { Alert } from "@/components/ui/alert";
@@ -36,7 +35,7 @@ export const QuestionComposer = forwardRef<
       <label htmlFor={id} className="sr-only">
         Ask a question about this dataset
       </label>
-      <div className="flex items-end gap-2 rounded-(--radius-panel) border border-rule-strong bg-surface p-2 focus-within:border-primary">
+      <div className="flex items-end gap-2 rounded-(--radius-control) border border-field bg-surface p-2 focus-within:border-primary">
         <textarea
           ref={ref}
           id={id}
@@ -55,8 +54,7 @@ export const QuestionComposer = forwardRef<
           disabled={Boolean(disabledReason)}
         />
         <Button type="submit" disabled={!trimmed || tooLong || blocked} pending={pending} aria-label="Ask">
-          {pending ? null : <ArrowUp size={16} aria-hidden="true" />}
-          <span className="hidden sm:inline">Ask</span>
+          Ask
         </Button>
       </div>
       <p id={`${id}-hint`} className="text-sm text-slate">

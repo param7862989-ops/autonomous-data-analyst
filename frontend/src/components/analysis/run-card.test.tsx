@@ -209,6 +209,35 @@ describe("RunCard", () => {
     window.history.replaceState(null, "", "/");
   });
 
+  it("stays on its question while content above it loads, until the reader scrolls", async () => {
+    let resized: (() => void) | undefined;
+    class FakeResizeObserver {
+      constructor(callback: () => void) {
+        resized = callback;
+      }
+      observe() {}
+      disconnect() {
+        resized = undefined; // a disconnected observer reports nothing more
+      }
+    }
+    vi.stubGlobal("ResizeObserver", FakeResizeObserver);
+    window.history.replaceState(null, "", "#run-run-1");
+    const scroll = vi.spyOn(Element.prototype, "scrollIntoView");
+    mockFetch(() => jsonResponse(COMPLETED));
+    renderWithQuery(<RunCard runId="run-1" onFollowUp={vi.fn()} />);
+    const heading = await screen.findByRole("heading", { name: BASE.question });
+    const article = heading.closest("article");
+    await waitFor(() => expect(scroll.mock.contexts).toContain(article));
+    const before = scroll.mock.calls.length;
+    resized?.(); // an earlier answer finished loading and grew
+    expect(scroll.mock.calls.length).toBe(before + 1);
+    window.dispatchEvent(new Event("wheel"));
+    resized?.();
+    expect(scroll.mock.calls.length).toBe(before + 1);
+    window.history.replaceState(null, "", "/");
+    vi.unstubAllGlobals();
+  });
+
   it("keeps the activity on screen while updates are failing", async () => {
     let calls = 0;
     mockFetch(() =>

@@ -61,11 +61,11 @@ const PALETTES: Record<ChartTheme, Palette> = {
       [0.5, "#5598e7"],
       [1, "#104281"],
     ],
-    ink: "#15233f",
-    muted: "#5a6a80",
-    grid: "#e6eaef",
-    axis: "#b8c3cf",
-    surface: "#ffffff",
+    ink: "#1d2520",
+    muted: "#56625b",
+    grid: "#e2e7df",
+    axis: "#98a79b",
+    surface: "#fafbf7",
   },
   dark: {
     series: SERIES_COLORS_DARK,
@@ -75,15 +75,15 @@ const PALETTES: Record<ChartTheme, Palette> = {
       [0.5, "#2a78d6"],
       [1, "#b7d3f6"],
     ],
-    ink: "#e7ecf3",
-    muted: "#9eabbd",
-    grid: "#232d3c",
-    axis: "#3e4c60",
-    surface: "#161e2a",
+    ink: "#e3e9e2",
+    muted: "#9aa79f",
+    grid: "#232b25",
+    axis: "#4a584e",
+    surface: "#18201b",
   },
 };
 
-const FONT = 'var(--font-plex-sans), "IBM Plex Sans", system-ui, sans-serif';
+const FONT = 'var(--font-public-sans), "Public Sans", system-ui, sans-serif';
 
 export type PlotlyFigure = { data: Data[]; layout: Partial<Layout>; config: Partial<Config> };
 

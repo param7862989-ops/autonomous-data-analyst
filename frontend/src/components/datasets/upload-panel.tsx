@@ -1,7 +1,7 @@
 "use client";
 
 import { clsx } from "clsx";
-import { FileSpreadsheet, Upload, X } from "lucide-react";
+import { FileSpreadsheet, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useId, useRef, useState } from "react";
 
@@ -42,7 +42,8 @@ function sheetsFrom(error: unknown): string[] | null {
   return Array.isArray(sheets) && sheets.every((s) => typeof s === "string") ? sheets : null;
 }
 
-export function UploadPanel() {
+/** The upload form. Its heading is the section it sits in (``labelledBy``). */
+export function UploadPanel({ labelledBy }: { labelledBy: string }) {
   const router = useRouter();
   const limits = useUploadLimits();
   const upload = useUploadDataset();
@@ -95,16 +96,11 @@ export function UploadPanel() {
   const serverError = upload.isError && !needsSheet ? upload.error : null;
 
   return (
-    <form onSubmit={submit} noValidate className="space-y-5" aria-labelledby={`${inputId}-title`}>
-      <div>
-        <h2 id={`${inputId}-title`} className="text-base font-semibold">
-          Upload a dataset
-        </h2>
-        <p className="mt-1 text-sm text-slate">
-          CSV or Excel (.xlsx), up to {formatBytes(maxBytes)}. The first row must contain column
-          names.
-        </p>
-      </div>
+    <form onSubmit={submit} noValidate className="max-w-xl space-y-5" aria-labelledby={labelledBy}>
+      <p className="text-sm text-slate">
+        CSV or Excel (.xlsx), up to {formatBytes(maxBytes)}. The first row must hold the column
+        names.
+      </p>
 
       <div
         onDragOver={(event) => {
@@ -118,8 +114,8 @@ export function UploadPanel() {
           choose(event.dataTransfer.files.item(0));
         }}
         className={clsx(
-          "rounded-(--radius-panel) border-2 border-dashed bg-surface px-4 py-6 text-center",
-          dragging ? "border-primary bg-primary-soft" : "border-rule-strong",
+          "rounded-(--radius-panel) border border-dashed bg-surface px-4 py-7 text-center",
+          dragging ? "border-primary bg-primary-soft" : "border-field",
         )}
       >
         <input
@@ -155,12 +151,11 @@ export function UploadPanel() {
           </div>
         ) : (
           <label htmlFor={inputId} className="flex cursor-pointer flex-col items-center gap-2">
-            <Upload size={22} aria-hidden="true" className="text-slate" />
             <span>
               <span className="font-medium text-primary underline underline-offset-2">
                 Choose a file
               </span>{" "}
-              <span className="text-slate">or drop it here</span>
+              <span className="text-slate">or drop it on this box</span>
             </span>
           </label>
         )}
@@ -172,7 +167,7 @@ export function UploadPanel() {
       ) : null}
 
       {needsSheet ? (
-        <fieldset className="rounded-(--radius-panel) border border-rule bg-surface px-4 py-3">
+        <fieldset className="border-y border-rule py-3">
           <legend className="px-1 text-sm font-medium">
             This workbook has several sheets. Choose one to import.
           </legend>

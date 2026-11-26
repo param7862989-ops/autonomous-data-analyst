@@ -42,7 +42,7 @@ export function ChartView({ spec, source }: { spec: ChartSpec; source?: StoredRe
 
   const tableId = `${spec.id}-data`;
   return (
-    <figure className="rounded-(--radius-panel) border border-rule bg-surface p-4">
+    <figure className="border border-rule bg-surface p-4">
       <figcaption className="font-medium">{spec.title}</figcaption>
       <div className="relative mt-2">
         {state === "loading" ? (

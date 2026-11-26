@@ -35,7 +35,7 @@ export function ThemeToggle({ className }: { className?: string }) {
             onClick={() => setPreference(value)}
             className={clsx(
               "flex size-7 items-center justify-center rounded-[3px]",
-              active ? "bg-surface text-ink shadow-sm" : "text-slate hover:text-ink",
+              active ? "bg-surface text-ink ring-1 ring-rule-strong" : "text-slate hover:text-ink",
             )}
           >
             <Icon size={14} aria-hidden="true" />

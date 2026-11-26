@@ -69,7 +69,7 @@ describe("validateFile", () => {
 describe("UploadPanel", () => {
   it("uploads a CSV and opens the new dataset", async () => {
     const uploads = mockUploads(() => jsonResponse({ id: "d1" }, 201));
-    renderWithQuery(<UploadPanel />);
+    renderWithQuery(<UploadPanel labelledBy="upload" />);
     await userEvent.upload(screen.getByLabelText(/choose a file/i), file("sales.csv"));
     await userEvent.type(screen.getByLabelText("Name (optional)"), "Q3 sales");
     await userEvent.click(screen.getByRole("button", { name: "Upload" }));
@@ -85,7 +85,7 @@ describe("UploadPanel", () => {
 
   it("blocks unsupported files before uploading", async () => {
     const fetchMock = mockFetch(() => jsonResponse(LIMITS));
-    renderWithQuery(<UploadPanel />);
+    renderWithQuery(<UploadPanel labelledBy="upload" />);
     await userEvent.upload(screen.getByLabelText(/choose a file/i), file("notes.pdf"), {
       applyAccept: false,
     });
@@ -103,7 +103,7 @@ describe("UploadPanel", () => {
             422,
           ),
     );
-    renderWithQuery(<UploadPanel />);
+    renderWithQuery(<UploadPanel labelledBy="upload" />);
     await userEvent.upload(screen.getByLabelText(/choose a file/i), file("book.xlsx", "PK"));
     await userEvent.click(screen.getByRole("button", { name: "Upload" }));
 
@@ -120,7 +120,7 @@ describe("UploadPanel", () => {
     mockUploads(() =>
       jsonResponse(errorBody("malformed_file", "Line 3 has 3 values but the first row has 2."), 422),
     );
-    renderWithQuery(<UploadPanel />);
+    renderWithQuery(<UploadPanel labelledBy="upload" />);
     await userEvent.upload(screen.getByLabelText(/choose a file/i), file("bad.csv"));
     await userEvent.click(screen.getByRole("button", { name: "Upload" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Line 3 has 3 values");

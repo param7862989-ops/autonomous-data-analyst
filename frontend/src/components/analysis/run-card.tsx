@@ -1,7 +1,6 @@
 "use client";
 
 import { clsx } from "clsx";
-import { FileDown } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { Alert } from "@/components/ui/alert";
@@ -34,7 +33,7 @@ function Evidence({ run, open, toggle }: { run: RunDetail; open: Set<string>; to
   return (
     <section aria-label="Computed results">
       <h4 className="text-sm font-semibold">Computed results</h4>
-      <ul className="mt-2 divide-y divide-rule rounded-(--radius-panel) border border-rule bg-surface">
+      <ul className="mt-2 divide-y divide-rule border-y border-rule">
         {ordered.map((result) => {
           const expanded = open.has(result.id);
           const panelId = `${run.id}-${result.id}`;
@@ -45,16 +44,14 @@ function Evidence({ run, open, toggle }: { run: RunDetail; open: Set<string>; to
                 aria-expanded={expanded}
                 aria-controls={panelId}
                 onClick={() => toggle(result.id)}
-                className="flex w-full items-start gap-3 px-4 py-2.5 text-left text-sm hover:bg-paper"
+                className="flex w-full items-start gap-3 py-2.5 text-left text-sm hover:bg-surface"
               >
-                <span className="mt-px rounded-[3px] border border-rule-strong px-1 text-xs text-slate">
-                  {result.id}
-                </span>
+                <span className="tabular w-7 shrink-0 font-medium text-primary">{result.id}</span>
                 <span className="min-w-0 flex-1">{result.description}</span>
                 <span className="shrink-0 text-slate">{expanded ? "Hide" : "Show"}</span>
               </button>
               {expanded ? (
-                <div id={panelId} className="px-4 pb-4">
+                <div id={panelId} className="pb-4 pl-10">
                   <ResultTable result={result} />
                 </div>
               ) : null}
@@ -68,10 +65,13 @@ function Evidence({ run, open, toggle }: { run: RunDetail; open: Set<string>; to
 
 export function RunCard({
   runId,
+  number,
   onFollowUp,
   onRetry,
 }: {
   runId: string;
+  /** Position in the conversation, shown in the margin. */
+  number?: number;
   onFollowUp: (q: string) => void;
   /** Absent when a new analysis can't start now (one is running, or analysis is unavailable). */
   onRetry?: (question: string) => void;
@@ -82,12 +82,27 @@ export function RunCard({
   const card = useRef<HTMLElement>(null);
 
   // Links from history end in #run-<id>. The card doesn't exist when the browser looks for that
-  // anchor, so it scrolls itself into view once it has loaded.
+  // anchor, so it scrolls itself into view once it has loaded. Earlier answers and charts may
+  // still be loading and push it down, so it stays aligned while the page grows, until the
+  // reader scrolls or a few seconds pass.
   const loaded = Boolean(query.data);
   useEffect(() => {
-    if (loaded && window.location.hash === `#run-${runId}`) {
-      card.current?.scrollIntoView({ block: "start" });
-    }
+    const target = card.current;
+    if (!loaded || !target || window.location.hash !== `#run-${runId}`) return;
+    const align = () => target.scrollIntoView({ block: "start" });
+    align();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(align);
+    observer.observe(document.body);
+    const stop = () => observer.disconnect();
+    const inputs = ["wheel", "touchstart", "keydown", "pointerdown"] as const;
+    for (const name of inputs) window.addEventListener(name, stop, { passive: true });
+    const timer = window.setTimeout(stop, 3000);
+    return () => {
+      stop();
+      window.clearTimeout(timer);
+      for (const name of inputs) window.removeEventListener(name, stop);
+    };
   }, [loaded, runId]);
 
   function toggle(resultId: string) {
@@ -150,105 +165,110 @@ export function RunCard({
     : (outcome?.charts ?? []);
 
   return (
-    <article ref={card} id={`run-${run.id}`} aria-labelledby={`q-${run.id}`} className="scroll-mt-6">
-      <header className="flex flex-wrap items-start justify-between gap-3">
-        <h3 id={`q-${run.id}`} className="max-w-[65ch] text-lg font-semibold">
+    <article
+      ref={card}
+      id={`run-${run.id}`}
+      aria-labelledby={`q-${run.id}`}
+      className="grid scroll-mt-6 gap-x-10 gap-y-3 border-b border-rule py-8 lg:grid-cols-[12rem_minmax(0,1fr)]"
+    >
+      <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm text-slate lg:block">
+        {number ? <p className="font-serif text-[1.1875rem] text-ink">Question {number}</p> : null}
+        <p className="lg:mt-1">{formatDateTime(run.created_at)}</p>
+        {!active && outcome ? (
+          <button
+            type="button"
+            className="text-primary underline decoration-primary/40 underline-offset-4 hover:decoration-primary lg:mt-3"
+            onClick={() =>
+              downloadFile(
+                safeFilename(run.question, "md"),
+                runToMarkdown(run),
+                "text/markdown;charset=utf-8",
+              )
+            }
+            aria-label="Download this analysis as a Markdown report"
+          >
+            Download report
+          </button>
+        ) : null}
+      </div>
+      <div className="min-w-0">
+        <h3 id={`q-${run.id}`} className="max-w-[40ch] text-[1.5rem] leading-snug">
           {run.question}
         </h3>
-        <div className="flex items-center gap-3">
-          <span className="text-sm text-slate">{formatDateTime(run.created_at)}</span>
-          {!active && outcome ? (
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() =>
-                downloadFile(
-                  safeFilename(run.question, "md"),
-                  runToMarkdown(run),
-                  "text/markdown;charset=utf-8",
-                )
-              }
-              aria-label="Download this analysis as a Markdown report"
-            >
-              <FileDown size={15} aria-hidden="true" />
-              Report
-            </Button>
-          ) : null}
-        </div>
-      </header>
 
-      <div className="mt-4 space-y-6">
-        {active ? (
-          <div className="rounded-(--radius-panel) border border-rule bg-surface p-4">
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <p className="text-sm font-medium">
-                {run.status === "queued" ? "Queued" : "Analysing"}
-                {run.cancel_requested ? " (cancelling…)" : ""}
-              </p>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => cancel.mutate(run.id)}
-                disabled={run.cancel_requested}
-                pending={cancel.isPending}
-              >
-                Cancel
-              </Button>
-            </div>
-            {query.isError ? (
-              <p role="status" className="mb-3 text-sm text-slate">
-                Can&apos;t get updates right now. Reconnecting…
-              </p>
-            ) : null}
-            <ActivityTimeline events={run.events} live />
-          </div>
-        ) : null}
-
-        {run.status === "failed" ? (
-          <Alert tone="danger" title="The analysis didn't finish" action={retry}>
-            {run.error_message ?? "Something went wrong."}
-          </Alert>
-        ) : null}
-        {run.status === "cancelled" ? (
-          <Alert tone="info" action={retry}>
-            This analysis was cancelled.
-          </Alert>
-        ) : null}
-        {run.status === "completed" && run.stop_reason && STOP_NOTES[run.stop_reason] ? (
-          <Alert tone="info">{STOP_NOTES[run.stop_reason]}</Alert>
-        ) : null}
-
-        {outcome?.answer ? (
-          <AnswerView outcome={outcome} onCite={cite} onFollowUp={onFollowUp} />
-        ) : null}
-
-        {shownCharts.length ? (
-          <div className={clsx("grid gap-4", shownCharts.length > 1 && "xl:grid-cols-2")}>
-            {shownCharts.map((chart) => (
-              <ChartView key={chart.id} spec={chart} source={sources.get(chart.source_result_id)} />
-            ))}
-          </div>
-        ) : null}
-
-        {run.outcome ? <Evidence run={run} open={openResults} toggle={toggle} /> : null}
-
-        {!active && run.events.length ? (
-          <details className="text-sm">
-            <summary className="cursor-pointer text-slate">
-              How this was answered ({run.events.length} steps
-              {run.model ? `, model ${run.model}` : ""})
-            </summary>
-            <div className="mt-3 space-y-3">
-              {outcome?.plan?.interpretation ? (
-                <p>
-                  <span className="text-slate">Interpretation: </span>
-                  {outcome.plan.interpretation}
+        <div className="mt-4 space-y-6">
+          {active ? (
+            <div className="border-l-2 border-primary py-1 pl-4">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <p className="text-sm font-medium">
+                  {run.status === "queued" ? "Queued" : "Analysing"}
+                  {run.cancel_requested ? " (cancelling…)" : ""}
+                </p>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => cancel.mutate(run.id)}
+                  disabled={run.cancel_requested}
+                  pending={cancel.isPending}
+                >
+                  Cancel
+                </Button>
+              </div>
+              {query.isError ? (
+                <p role="status" className="mb-3 text-sm text-slate">
+                  Can&apos;t get updates right now. Reconnecting…
                 </p>
               ) : null}
-              <ActivityTimeline events={run.events} live={false} />
+              <ActivityTimeline events={run.events} live />
             </div>
-          </details>
-        ) : null}
+          ) : null}
+
+          {run.status === "failed" ? (
+            <Alert tone="danger" title="The analysis didn't finish" action={retry}>
+              {run.error_message ?? "Something went wrong."}
+            </Alert>
+          ) : null}
+          {run.status === "cancelled" ? (
+            <Alert tone="info" action={retry}>
+              This analysis was cancelled.
+            </Alert>
+          ) : null}
+          {run.status === "completed" && run.stop_reason && STOP_NOTES[run.stop_reason] ? (
+            <Alert tone="info">{STOP_NOTES[run.stop_reason]}</Alert>
+          ) : null}
+
+          {outcome?.answer ? (
+            <AnswerView outcome={outcome} onCite={cite} onFollowUp={onFollowUp} />
+          ) : null}
+
+          {shownCharts.length ? (
+            <div className={clsx("grid gap-4", shownCharts.length > 1 && "xl:grid-cols-2")}>
+              {shownCharts.map((chart) => (
+                <ChartView key={chart.id} spec={chart} source={sources.get(chart.source_result_id)} />
+              ))}
+            </div>
+          ) : null}
+
+          {run.outcome ? <Evidence run={run} open={openResults} toggle={toggle} /> : null}
+
+          {!active && run.events.length ? (
+            <details className="text-sm">
+              <summary className="cursor-pointer text-slate">
+                How this was answered ({run.events.length} steps
+                {run.model ? `, model ${run.model}` : ""})
+              </summary>
+              <div className="mt-3 space-y-3">
+                {outcome?.plan?.interpretation ? (
+                  <p>
+                    <span className="text-slate">Interpretation: </span>
+                    {outcome.plan.interpretation}
+                  </p>
+                ) : null}
+                <ActivityTimeline events={run.events} live={false} />
+              </div>
+            </details>
+          ) : null}
+        </div>
       </div>
     </article>
   );

@@ -72,7 +72,7 @@ export function DataPreview({ datasetId, columns }: { datasetId: string; columns
         tabIndex={0}
         role="region"
         aria-label="Dataset rows table"
-        className="relative mt-3 max-h-[32rem] overflow-auto rounded-(--radius-panel) border border-rule bg-surface"
+        className="relative mt-3 max-h-[32rem] overflow-auto border-y border-rule bg-surface"
       >
         <table className="w-full text-sm">
           <caption className="sr-only">Dataset rows</caption>

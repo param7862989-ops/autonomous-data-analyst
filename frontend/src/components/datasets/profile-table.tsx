@@ -83,7 +83,7 @@ export function ProfileTable({ columns }: { columns: ColumnProfile[] }) {
       tabIndex={0}
       role="region"
       aria-label="Column profile table"
-      className="relative overflow-x-auto rounded-(--radius-panel) border border-rule bg-surface"
+      className="relative overflow-x-auto border-y border-rule bg-surface"
     >
       <table className="w-full min-w-[52rem] text-sm">
         <caption className="sr-only">Column profile</caption>

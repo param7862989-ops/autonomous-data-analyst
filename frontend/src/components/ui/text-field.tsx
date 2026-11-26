@@ -29,7 +29,7 @@ export const TextField = forwardRef<HTMLInputElement, TextFieldProps>(function T
         className={clsx(
           "mt-1.5 block h-10 w-full rounded-(--radius-control) border bg-surface px-3 text-[15px]",
           "placeholder:text-slate/70 focus-visible:outline-2 focus-visible:outline-offset-0",
-          error ? "border-danger" : "border-rule-strong",
+          error ? "border-danger" : "border-field",
         )}
         {...props}
       />

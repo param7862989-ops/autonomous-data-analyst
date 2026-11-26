@@ -53,13 +53,13 @@ export function HistoryTable({ limit = 25, compact = false }: { limit?: number; 
   }
   return (
     <>
-      <ul className="divide-y divide-rule rounded-(--radius-panel) border border-rule bg-surface">
+      <ul className="divide-y divide-rule border-y border-rule">
         {history.data.items.map((item) => (
-          <li key={item.id} className="px-4 py-3">
+          <li key={item.id} className="py-3">
             <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
               <Link
                 href={`/conversations/${item.conversation_id}#run-${item.id}`}
-                className="min-w-0 font-medium text-primary underline-offset-2 hover:underline"
+                className="min-w-0 font-serif text-[17px] font-semibold text-ink underline decoration-rule-strong underline-offset-4 hover:decoration-ink"
               >
                 {item.question}
               </Link>
@@ -72,7 +72,7 @@ export function HistoryTable({ limit = 25, compact = false }: { limit?: number; 
             </div>
             <p className="mt-0.5 text-sm text-slate">{item.dataset_name}</p>
             {!compact && item.answer_summary ? (
-              <p className="mt-1.5 max-w-[75ch] font-serif text-[15px]">{item.answer_summary}</p>
+              <p className="mt-1.5 max-w-[72ch] text-[15px] text-ink/90">{item.answer_summary}</p>
             ) : null}
           </li>
         ))}

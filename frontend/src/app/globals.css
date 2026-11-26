@@ -1,90 +1,92 @@
 @import "tailwindcss";
 
 /*
- * Design tokens.
- * Paper and ink carry the interface; the highlighter colour is reserved for figures that are
- * backed by a computed result, and nothing else.
+ * Design tokens: an auditor's working paper.
+ * Pale columnar-pad paper, sheets a step lighter, ink, and the auditor's green, which marks
+ * what can be acted on. The highlighter is reserved for figures that match a computed result.
+ * Elevation is one rule: hairlines between things, never shadows, never a box inside a box.
+ * Every text/background pair below meets WCAG AA in both themes (lowest: muted ink on the
+ * soft green, 5.0:1); field borders meet the 3:1 needed for form controls.
  */
 @theme {
-  --color-paper: #f4f6f8;
-  --color-surface: #ffffff;
-  --color-ink: #15233f;
-  --color-slate: #5a6a80;
-  --color-rule: #d6dde5;
-  --color-rule-strong: #b8c3cf;
-  --color-primary: #1f3a93;
-  --color-primary-hover: #182e75;
-  --color-primary-soft: #e8edf9;
-  --color-on-primary: #ffffff;
+  --color-paper: #ecefe7;
+  --color-surface: #fafbf7;
+  --color-ink: #1d2520;
+  --color-slate: #56625b;
+  --color-rule: #ccd5cb;
+  --color-rule-strong: #98a79b;
+  --color-field: #76847b;
+  --color-primary: #1e5b47;
+  --color-primary-hover: #164535;
+  --color-primary-soft: #dce7df;
+  --color-on-primary: #fafbf7;
   --color-highlight: #ffe16a;
-  --color-brand-tile: #15233f;
   --color-danger: #b42318;
-  --color-danger-soft: #fef3f2;
-  --color-on-danger: #ffffff;
-  --color-success: #18794e;
-  --color-success-soft: #ecfdf3;
-  --color-warning: #93370d;
-  --color-warning-soft: #fffaeb;
+  --color-danger-soft: #f8e9e6;
+  --color-on-danger: #fafbf7;
+  --color-success: #1e5b47;
+  --color-success-soft: #dce7df;
+  --color-warning: #8a4a0b;
+  --color-warning-soft: #f7eedc;
 
-  --font-sans: var(--font-plex-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-public-sans), ui-sans-serif, system-ui, sans-serif;
   --font-serif: var(--font-source-serif), Georgia, "Times New Roman", serif;
 
-  --radius-control: 4px;
-  --radius-panel: 6px;
+  --radius-control: 3px;
+  --radius-panel: 2px;
 }
 
 /*
- * Dark theme: the same roles, each re-stepped for a dark surface (not an automatic inversion).
- * Every text/background pair below meets WCAG AA (lowest: ink on the highlighter, 6.1:1).
+ * Dark theme: the same roles re-stepped for a dark sheet (not an automatic inversion).
  * The media query follows the OS; data-theme (set by the theme switch) wins both ways, and
  * :where() keeps the media block's specificity below the explicit [data-theme="dark"] scope.
  */
 @media (prefers-color-scheme: dark) {
   :root:where(:not([data-theme="light"])) {
     color-scheme: dark;
-    --color-paper: #0e141d;
-    --color-surface: #161e2a;
-    --color-ink: #e7ecf3;
-    --color-slate: #9eabbd;
-    --color-rule: #2a3546;
-    --color-rule-strong: #3e4c60;
-    --color-primary: #8eadf5;
-    --color-primary-hover: #b3c8fa;
-    --color-primary-soft: #1d2a47;
-    --color-on-primary: #0c1733;
-    --color-highlight: #8a6d00;
-    --color-brand-tile: #2a3a5c;
+    --color-paper: #111713;
+    --color-surface: #18201b;
+    --color-ink: #e3e9e2;
+    --color-slate: #9aa79f;
+    --color-rule: #2b352e;
+    --color-rule-strong: #4a584e;
+    --color-field: #6e7d73;
+    --color-primary: #86c9a8;
+    --color-primary-hover: #a6dabf;
+    --color-primary-soft: #1d3328;
+    --color-on-primary: #0b1c14;
+    --color-highlight: #665200;
     --color-danger: #f28b82;
-    --color-danger-soft: #3b1715;
+    --color-danger-soft: #3a1916;
     --color-on-danger: #2b0a07;
-    --color-success: #6fd3a0;
-    --color-success-soft: #10291e;
+    --color-success: #86c9a8;
+    --color-success-soft: #1d3328;
     --color-warning: #f2b56b;
-    --color-warning-soft: #33240e;
+    --color-warning-soft: #33260f;
   }
 }
 
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --color-paper: #0e141d;
-  --color-surface: #161e2a;
-  --color-ink: #e7ecf3;
-  --color-slate: #9eabbd;
-  --color-rule: #2a3546;
-  --color-rule-strong: #3e4c60;
-  --color-primary: #8eadf5;
-  --color-primary-hover: #b3c8fa;
-  --color-primary-soft: #1d2a47;
-  --color-on-primary: #0c1733;
-  --color-highlight: #8a6d00;
-  --color-brand-tile: #2a3a5c;
+  --color-paper: #111713;
+  --color-surface: #18201b;
+  --color-ink: #e3e9e2;
+  --color-slate: #9aa79f;
+  --color-rule: #2b352e;
+  --color-rule-strong: #4a584e;
+  --color-field: #6e7d73;
+  --color-primary: #86c9a8;
+  --color-primary-hover: #a6dabf;
+  --color-primary-soft: #1d3328;
+  --color-on-primary: #0b1c14;
+  --color-highlight: #665200;
   --color-danger: #f28b82;
-  --color-danger-soft: #3b1715;
+  --color-danger-soft: #3a1916;
   --color-on-danger: #2b0a07;
-  --color-success: #6fd3a0;
-  --color-success-soft: #10291e;
+  --color-success: #86c9a8;
+  --color-success-soft: #1d3328;
   --color-warning: #f2b56b;
-  --color-warning-soft: #33240e;
+  --color-warning-soft: #33260f;
 }
 
 @layer base {
@@ -100,6 +102,16 @@
     font-size: 15px;
     line-height: 1.55;
     -webkit-font-smoothing: antialiased;
+  }
+
+  /* Headings are set in the serif: the voice of a written report, not of the interface. */
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-serif);
+    font-weight: 600;
+    letter-spacing: -0.005em;
+    text-wrap: balance;
   }
 
   :focus-visible {
@@ -120,4 +132,22 @@
 
 @utility tabular {
   font-variant-numeric: tabular-nums;
+}
+
+/*
+ * A figure that matches a computed result: highlighted and ticked, as an auditor ticks a
+ * figure agreed to its source. The tick is drawn, not typed, so it adds nothing to the text.
+ */
+@utility ticked {
+  &::after {
+    content: "";
+    display: inline-block;
+    width: 0.62em;
+    height: 0.62em;
+    margin-left: 0.12em;
+    vertical-align: 0.42em;
+    background-color: var(--color-primary);
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M1 5.5 4 8.5 9 1.5' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
+      center / contain no-repeat;
+  }
 }
