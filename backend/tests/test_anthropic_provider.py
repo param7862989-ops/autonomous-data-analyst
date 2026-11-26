@@ -105,7 +105,9 @@ def test_tool_step_request_shape_and_parsing() -> None:
     assert (step.usage.input_tokens, step.usage.output_tokens) == (12, 7)
 
     request = captured.requests[0]
-    assert request.headers["x-api-key"] == API_KEY
+    # SDK 2.x sends the key as a bearer token (1.x used x-api-key); either way only in a header.
+    assert request.headers["authorization"] == f"Bearer {API_KEY}"
+    assert "x-api-key" not in request.headers
     assert FALLBACK_BETA in request.headers["anthropic-beta"]
     body = captured.body()
     assert body["model"] == "claude-opus-5-5"

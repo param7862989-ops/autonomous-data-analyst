@@ -52,6 +52,12 @@ def test_a_dead_engine_is_restarted(parquet: Path) -> None:
         assert engine.count_rows() == 50_000
 
 
+# A 50,000 x 50,000 join whose filter the optimiser cannot prove empty, so it has to run: about
+# 4 s on a fast machine. ("a.n + b.n = -1" stopped working: DuckDB 2.0 uses column statistics to
+# see that n is never negative and returns at once.)
+SLOW_QUERY = "SELECT COUNT(*) FROM data a, data b WHERE hash(a.n * 7919 + b.n) % 1000003 = 1"
+
+
 def test_a_hung_query_is_killed_and_the_engine_restarts(
     parquet: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -59,7 +65,7 @@ def test_a_hung_query_is_killed_and_the_engine_restarts(
     limits = EngineLimits(query_timeout_seconds=0.05)
     with IsolatedEngine(parquet, limits, address_space_bytes=None) as engine:
         with pytest.raises(QueryTimeoutError):
-            engine.execute("SELECT COUNT(*) FROM data a, data b WHERE a.n + b.n = -1")
+            engine.execute(SLOW_QUERY)
         assert engine.count_rows() == 50_000
         # Either the child interrupted itself or the parent killed it; both must recover.
         assert engine._process is not None
@@ -73,7 +79,7 @@ def test_a_timeout_inside_the_engine_keeps_its_error_type(parquet: Path) -> None
     ) as engine:
         process = engine._process
         with pytest.raises(QueryTimeoutError):
-            engine.execute("SELECT COUNT(*) FROM data a, data b WHERE a.n + b.n = -1")
+            engine.execute(SLOW_QUERY)
         assert engine._process is process, "the child should not have been killed"
         assert engine.count_rows() == 50_000
 
